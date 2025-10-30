@@ -1,5 +1,6 @@
 package com.luis.lifemusic.page
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,9 +16,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.R
+import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,5 +130,21 @@ fun LoginPage(onLoginClick: () -> Unit = {}) {
                     .clickable { /* acción futura */ }
             )
         }
+    }
+}
+
+@Preview(showBackground = true, name = "HomePage - Light Mode")
+@Composable
+fun LoginPagePreviewLight() {
+    LifeMusicTheme {
+        LoginPage()
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "HomePage - Dark Mode")
+@Composable
+fun LoginPagePreviewDark() {
+    LifeMusicTheme {
+        LoginPage()
     }
 }
