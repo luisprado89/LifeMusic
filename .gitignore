@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Ignorar cualquier otro archivo de configuración IDE no listado
+.idea/
