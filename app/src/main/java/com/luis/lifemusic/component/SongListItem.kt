@@ -1,14 +1,12 @@
 package com.luis.lifemusic.component
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,8 +14,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.luis.lifemusic.R
+import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 @Composable
 fun SongListItem(
@@ -31,8 +32,10 @@ fun SongListItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(90.dp),
-        shape = MaterialTheme.shapes.medium
+            .height(90.dp)
+            .padding(vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -61,7 +64,11 @@ fun SongListItem(
                 Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(artist, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (album.isNotEmpty()) {
-                    Text(album, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f))
+                    Text(
+                        album,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
                 }
             }
 
@@ -74,10 +81,43 @@ fun SongListItem(
                 Icon(
                     imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFavorite) "Favorito" else "No favorito",
-                    tint = if (isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    tint = if (isFavorite)
+                        Color.Red
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(18.dp)
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "SongListItem - Light Mode")
+@Composable
+fun SongListItemPreviewLight() {
+    LifeMusicTheme {
+        SongListItem(
+            imageRes = R.drawable.queen,
+            title = "Bohemian Rhapsody",
+            artist = "Queen",
+            album = "A Night at the Opera",
+            duration = "5:55",
+            isFavorite = true
+        )
+    }
+}
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "SongListItem - Dark Mode")
+@Composable
+fun SongListItemPreviewDark() {
+    LifeMusicTheme {
+        SongListItem(
+            imageRes = R.drawable.johnlennon,
+            title = "Imagine",
+            artist = "John Lennon",
+            album = "Imagine",
+            duration = "3:07",
+            isFavorite = false
+        )
     }
 }
