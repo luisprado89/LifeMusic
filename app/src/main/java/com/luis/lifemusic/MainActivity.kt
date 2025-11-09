@@ -20,10 +20,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             LifeMusicTheme {
 //                LoginPage()
-//                HomePage()
+                HomePage()
 //                ListPage()
 //                DetailPage ()
-                ProfilePage()
+//                ProfilePage()
             }
         }
     }
@@ -34,6 +34,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GreetingPreview() {
     LifeMusicTheme {
-        LoginPage()
+//                LoginPage()
+//        HomePage()
+                ListPage()
+//                DetailPage ()
+//                ProfilePage()
     }
 }
