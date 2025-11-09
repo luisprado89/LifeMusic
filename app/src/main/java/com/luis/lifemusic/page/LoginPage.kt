@@ -42,7 +42,7 @@ fun LoginPage(onLoginClick: () -> Unit = {}) {
 
             // LOGO
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.drawable.logo_lm),
                 contentDescription = "Logo LifeMusic",
                 modifier = Modifier
                     .size(100.dp)
