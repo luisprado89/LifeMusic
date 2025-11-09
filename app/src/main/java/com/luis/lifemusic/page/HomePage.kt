@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,18 +12,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.luis.lifemusic.R
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.component.SongCard
+import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 @Composable
 fun HomePage() {
     MainScaffold(
         title = "Explora tu música",
-        isHome = true,
-        onListClick = { /* TODO: acción lista */ },
-        onProfileClick = { /* TODO: acción perfil */ }
+        isHome = true
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -39,22 +38,13 @@ fun HomePage() {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item {
+                    items(sampleSongs.take(3)) { song ->
                         SongCard(
-                            imageRes = R.drawable.queen,
-                            title = "Bohemian Rhapsody",
-                            artist = "Queen",
-                            duration = "5:55",
-                            isFavorite = true
-                        )
-                    }
-                    item {
-                        SongCard(
-                            imageRes = R.drawable.johnlennon,
-                            title = "Imagine",
-                            artist = "John Lennon",
-                            duration = "3:07",
-                            isFavorite = false
+                            imageRes = song.imageRes,
+                            title = song.title,
+                            artist = song.artist,
+                            duration = song.duration,
+                            isFavorite = song.isFavorite
                         )
                     }
                 }
@@ -70,18 +60,13 @@ fun HomePage() {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item {
+                    items(sampleSongs.takeLast(3)) { song ->
                         SongCard(
-                            imageRes = R.drawable.ledzeppelin,
-                            title = "Stairway to Heaven",
-                            artist = "Led Zeppelin"
-                        )
-                    }
-                    item {
-                        SongCard(
-                            imageRes = R.drawable.gunsnroses,
-                            title = "Sweet Child O' Mine",
-                            artist = "Guns N' Roses"
+                            imageRes = song.imageRes,
+                            title = song.title,
+                            artist = song.artist,
+                            duration = song.duration,
+                            isFavorite = song.isFavorite
                         )
                     }
                 }
