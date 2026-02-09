@@ -19,11 +19,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LifeMusicTheme {
-//                LoginPage()
-//                HomePage()
-//                ListPage()
-//                DetailPage ()
-//                ProfilePage()
+//                LifeMusicApp()
             }
         }
     }
@@ -34,10 +30,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GreetingPreview() {
     LifeMusicTheme {
-//                LoginPage()
-//        HomePage()
-//                ListPage()
-//                DetailPage ()
-//                ProfilePage()
+//                LifeMusicApp()
     }
 }
