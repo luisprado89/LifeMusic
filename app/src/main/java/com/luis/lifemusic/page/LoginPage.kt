@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -24,10 +24,15 @@ import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginPage(onLoginClick: () -> Unit = {}) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
+fun LoginPage(
+    username: String,
+    password: String,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoginClick: () -> Unit = {},
+    onGoToRegister: () -> Unit = {},
+    onGoToRecover: () -> Unit = {}
+) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -77,7 +82,7 @@ fun LoginPage(onLoginClick: () -> Unit = {}) {
             // Campo usuario o email
             OutlinedTextField(
                 value = username,
-                onValueChange = { username = it },
+                onValueChange = onUsernameChange,
                 label = { Text("Nombre de usuario o correo electrónico") },
                 leadingIcon = {
                     Icon(Icons.Default.Email, contentDescription = "Usuario")
@@ -92,7 +97,7 @@ fun LoginPage(onLoginClick: () -> Unit = {}) {
             // Campo contraseña
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = onPasswordChange,
                 label = { Text("Contraseña") },
                 leadingIcon = {
                     Icon(Icons.Default.Lock, contentDescription = "Contraseña")
@@ -120,31 +125,57 @@ fun LoginPage(onLoginClick: () -> Unit = {}) {
                 )
             }
 
-            // Texto “¿Olvidaste tu contraseña?”
+            // Recuperación contraseña
             Text(
                 text = "¿Olvidaste tu contraseña?",
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 modifier = Modifier
                     .padding(top = 16.dp)
-                    .clickable { /* acción futura */ }
+                    .clickable { onGoToRecover() }
             )
+
+            // Link registro
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "¿No tienes cuenta? ")
+                Text(
+                    text = "Regístrate",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable { onGoToRegister() }
+                )
+            }
         }
     }
 }
 
-@Preview(showBackground = true, name = "HomePage - Light Mode")
+/**
+ * Previews con datos fake SOLO para diseño.
+ * (Luego en MVVM estos valores vendrán del ViewModel)
+ */
+@Preview(showBackground = true, name = "LoginPage - Light Mode")
 @Composable
 fun LoginPagePreviewLight() {
     LifeMusicTheme {
-        LoginPage()
+        LoginPage(
+            username = "",
+            password = "",
+            onUsernameChange = {},
+            onPasswordChange = {}
+        )
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "HomePage - Dark Mode")
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "LoginPage - Dark Mode")
 @Composable
 fun LoginPagePreviewDark() {
     LifeMusicTheme {
-        LoginPage()
+        LoginPage(
+            username = "luis@lifemusic.com",
+            password = "1234",
+            onUsernameChange = {},
+            onPasswordChange = {}
+        )
     }
 }
