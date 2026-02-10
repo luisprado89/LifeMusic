@@ -16,8 +16,30 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
+import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
+/**
+ * Destination de registro.
+ * - route: se usa en AppNavHost para navegar a esta pantalla.
+ * - title: título mostrado en la TopAppBar (MainScaffold).
+ */
+object RegisterDestination : NavigationDestination {
+    override val route = "register"
+    override val title = "Crear cuenta"
+}
+
+/**
+ * RegisterPage (UI pura).
+ *
+ * ✅ Importante:
+ * - No guardamos estado con remember.
+ * - Todo el estado entra por parámetros y se actualiza con callbacks.
+ * - El ViewModel (más adelante) validará:
+ *   - si el correo/usuario ya existe en Room
+ *   - si password == confirmPassword
+ *   - y guardará la pregunta/respuesta para recuperación ficticia.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterPage(
@@ -34,8 +56,20 @@ fun RegisterPage(
     onRegisterClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
+    // ✅ Regla simple para UX (sin persistencia aquí):
+    // activamos botón si hay datos y las contraseñas coinciden.
+    // (En MVVM esto también se controlará desde el ViewModel.)
+    val canRegister =
+        username.isNotBlank() &&
+                password.isNotBlank() &&
+                confirmPassword.isNotBlank() &&
+                password == confirmPassword &&
+                securityQuestion.isNotBlank() &&
+                securityAnswer.isNotBlank()
+
     MainScaffold(
-        title = "Crear cuenta",
+        // ✅ Título consistente con la navegación (sin hardcode).
+        title = RegisterDestination.title,
         onBackClick = onBackClick
     ) { padding ->
         Column(
@@ -113,6 +147,7 @@ fun RegisterPage(
 
             Button(
                 onClick = onRegisterClick,
+                enabled = canRegister, // ✅ evita “registro vacío” en UI
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
