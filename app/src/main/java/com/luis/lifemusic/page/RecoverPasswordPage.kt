@@ -15,8 +15,33 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
+import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
+/**
+ * Destination de recuperación.
+ * - route: se usa en AppNavHost para navegar a esta pantalla.
+ * - title: título que mostramos en la TopAppBar (MainScaffold).
+ */
+object RecoverDestination : NavigationDestination {
+    override val route = "recover"
+    override val title = "Recuperar contraseña"
+}
+
+/**
+ * RecoverPasswordPage (UI pura).
+ *
+ * ✅ Importante:
+ * - Esta pantalla NO guarda estado con remember.
+ * - Todo el estado entra por parámetros (username, isLoading, isQuestionLoaded, etc.).
+ * - La pantalla solo “emite eventos” mediante callbacks:
+ *   - onSearchUserClick()
+ *   - onResetPasswordClick()
+ *
+ * Esto facilita integrar MVVM + Room después:
+ * - El ViewModel controlará el estado y validará si el usuario/correo existe.
+ * - Room aportará la persistencia (usuarios + pregunta/respuesta ficticia).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecoverPasswordPage(
@@ -33,10 +58,12 @@ fun RecoverPasswordPage(
     onResetPasswordClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
+    // El botón de reset solo se habilita si ya hay respuesta y contraseña nueva.
     val canReset = securityAnswer.isNotBlank() && newPassword.isNotBlank()
 
     MainScaffold(
-        title = "Recuperar contraseña",
+        // ✅ Usamos el title del Destination para que sea consistente con la navegación.
+        title = RecoverDestination.title,
         onBackClick = onBackClick
     ) { padding ->
         Column(
@@ -83,6 +110,13 @@ fun RecoverPasswordPage(
                 }
             }
 
+            /**
+             * ✅ Este bloque (Paso 2) solo se muestra cuando:
+             * isQuestionLoaded == true
+             *
+             * Eso significa que “el usuario/correo existe” y ya tenemos la pregunta cargada.
+             * En el futuro, el ViewModel lo activará tras consultar Room.
+             */
             if (isQuestionLoaded) {
                 Spacer(modifier = Modifier.height(10.dp))
 
