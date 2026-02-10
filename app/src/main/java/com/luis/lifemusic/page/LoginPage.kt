@@ -20,7 +20,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.R
+import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+
+/**
+ * ✅ Destino de navegación de la pantalla Login.
+ *
+ * ¿Por qué existe este object?
+ * - Centraliza la ruta (route) y el título (title) de la pantalla.
+ * - Evita "strings sueltos" repetidos por la app (más mantenible).
+ * - Facilita construir el NavHost y referenciar esta pantalla de forma consistente.
+ */
+object LoginDestination : NavigationDestination {
+    override val route = "login"
+    override val title = "Login"
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +47,15 @@ fun LoginPage(
     onGoToRegister: () -> Unit = {},
     onGoToRecover: () -> Unit = {}
 ) {
+    /**
+     * ⚠️ Importante (MVVM):
+     * Esta pantalla NO guarda estado interno con remember.
+     * Recibe username/password y callbacks desde fuera (ViewModel).
+     *
+     * Ventaja:
+     * - UI pura (@Composable) sin lógica de negocio.
+     * - El estado puede venir de un ViewModel con StateFlow, cumpliendo el enunciado del proyecto.
+     */
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
