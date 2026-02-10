@@ -18,23 +18,57 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.R
 import com.luis.lifemusic.component.MainScaffold
+import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+
+/**
+ * Destination de la pantalla de detalle.
+ *
+ * - route: nombre lógico usado en el NavHost
+ * - title: título mostrado en el TopAppBar
+ * - songIdArg: argumento necesario para identificar qué canción mostrar
+ *
+ * IMPORTANTE:
+ * No navegamos usando el título, sino un id estable (songId).
+ * Esto es fundamental para:
+ *  - Navegación segura
+ *  - Futuro uso con ViewModel + Room
+ */
+object DetailDestination : NavigationDestination {
+    override val route = "detail"
+    override val title = "Detalle de canción"
+
+    const val songIdArg = "songId"
+    val routeWithArgs = "$route/{$songIdArg}"
+}
 
 @Composable
 fun DetailPage(
-    imageRes: Int = R.drawable.queen,
-    title: String = "Bohemian Rhapsody",
-    artist: String = "Queen",
-    album: String = "A Night at the Opera",
-    duration: String = "5:55",
+    songId: Int,
+    imageRes: Int,
+    title: String,
+    artist: String,
+    album: String,
+    duration: String,
     isFavoriteInitial: Boolean = false,
-    onBackClick: () -> Unit = {},
-    onReturnToList: () -> Unit = {}
+    onBackClick: () -> Unit = {}
 ) {
+    /*
+     * 🔴 ESTADO LOCAL TEMPORAL (IMPORTANTE)
+     *
+     * Este estado se usa SOLO para que la UI sea interactiva mientras:
+     *  - No existe todavía un ViewModel
+     *  - No existe todavía Room
+     *
+     * Cuando se implemente MVVM:
+     *  - `isFavorite` vendrá del UiState del ViewModel
+     *  - Este remember desaparecerá
+     *  - El botón llamará a un evento del ViewModel
+     */
     var isFavorite by remember { mutableStateOf(isFavoriteInitial) }
 
     MainScaffold(
-        title = "Detalle de canción",
+        title = DetailDestination.title,
         onBackClick = onBackClick
     ) { padding ->
         Column(
@@ -42,9 +76,9 @@ fun DetailPage(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             // Imagen del álbum
             Image(
                 painter = painterResource(id = imageRes),
@@ -55,13 +89,15 @@ fun DetailPage(
                     .padding(bottom = 24.dp)
             )
 
-            // Información principal
+            // Título de la canción
             Text(
                 text = title,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
+
+            // Artista y álbum
             Text(
                 text = "$artist • $album",
                 fontSize = 15.sp,
@@ -71,7 +107,7 @@ fun DetailPage(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Duración con fondo gris
+            // Duración
             Surface(
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(12.dp)
@@ -79,16 +115,18 @@ fun DetailPage(
                 Text(
                     text = "Duración: $duration",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 14.sp
                 )
             }
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Botón "Me gusta"
+            // Botón favoritos (estado LOCAL por ahora)
             Button(
-                onClick = { isFavorite = !isFavorite },
+                onClick = {
+                    // 🔹 Cambia solo el estado visual por ahora
+                    isFavorite = !isFavorite
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isFavorite) Color.Red else MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = if (isFavorite) Color.White else MaterialTheme.colorScheme.onSurface
@@ -99,24 +137,7 @@ fun DetailPage(
                     .height(55.dp)
             ) {
                 Text(
-                    text = if (isFavorite) "❤️ Me gusta" else "🤍 Me gusta",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 16.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botón "Volver al listado"
-            OutlinedButton(
-                onClick = onReturnToList,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(55.dp)
-            ) {
-                Text(
-                    text = "Volver al listado",
+                    text = if (isFavorite) "❤️ En favoritos" else "🤍 Añadir a favoritos",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
                 )
@@ -125,11 +146,22 @@ fun DetailPage(
     }
 }
 
+/**
+ * Previews SOLO para diseño.
+ * El songId aquí no se usa realmente.
+ */
 @Preview(showBackground = true, name = "DetailPage - Light Mode")
 @Composable
 fun DetailPagePreviewLight() {
     LifeMusicTheme {
-        DetailPage()
+        DetailPage(
+            songId = 1,
+            imageRes = R.drawable.queen,
+            title = "Bohemian Rhapsody",
+            artist = "Queen",
+            album = "A Night at the Opera",
+            duration = "5:55"
+        )
     }
 }
 
@@ -137,6 +169,13 @@ fun DetailPagePreviewLight() {
 @Composable
 fun DetailPagePreviewDark() {
     LifeMusicTheme {
-        DetailPage()
+        DetailPage(
+            songId = 1,
+            imageRes = R.drawable.queen,
+            title = "Bohemian Rhapsody",
+            artist = "Queen",
+            album = "A Night at the Opera",
+            duration = "5:55"
+        )
     }
 }
