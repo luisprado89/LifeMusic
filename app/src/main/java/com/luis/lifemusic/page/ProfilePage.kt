@@ -20,7 +20,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.component.MainScaffold
+import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+
+/**
+ * Destination de la pantalla de Perfil.
+ *
+ * ¿Por qué existe este objeto?
+ * - Centraliza la "route" y el "title" para navegación.
+ * - Evita strings sueltos repartidos por el proyecto.
+ * - AppNavHost usará ProfileDestination.route cuando llegue el momento.
+ */
+object ProfileDestination : NavigationDestination {
+    override val route = "profile"
+    override val title = "Mi Perfil"
+}
 
 @Composable
 fun ProfilePage(
@@ -31,12 +45,14 @@ fun ProfilePage(
     onBackClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
+    // Estado local SOLO para UI (más adelante vendrá desde ViewModel/Room)
     var name by remember { mutableStateOf(initialName) }
     var email by remember { mutableStateOf(initialEmail) }
     var isEditing by remember { mutableStateOf(false) }
 
     MainScaffold(
-        title = "Mi Perfil",
+        // Usamos el title reminderizado en el Destination para consistencia
+        title = ProfileDestination.title,
         onBackClick = onBackClick
     ) { padding ->
         Column(
@@ -47,7 +63,7 @@ fun ProfilePage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Imagen de perfil circular
+            // Imagen de perfil circular (letra inicial)
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -56,7 +72,7 @@ fun ProfilePage(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = name.first().uppercase(),
+                    text = name.firstOrNull()?.uppercase() ?: "L",
                     fontWeight = FontWeight.Bold,
                     fontSize = 48.sp,
                     color = Color.Black.copy(alpha = 0.6f)
@@ -102,6 +118,8 @@ fun ProfilePage(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Callback de logout: por ahora solo UI/navegación.
+                // Más adelante aquí también limpiaremos sesión/estado en Room si lo implementamos.
                 OutlinedButton(
                     onClick = onLogoutClick,
                     shape = RoundedCornerShape(12.dp),
@@ -114,7 +132,7 @@ fun ProfilePage(
                 }
 
             } else {
-                // 🔹 Modo edición
+                // 🔹 Modo edición (solo UI local por ahora)
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -195,15 +213,11 @@ fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
 @Preview(showBackground = true, name = "ProfilePage - Light Mode")
 @Composable
 fun ProfilePagePreviewLight() {
-    LifeMusicTheme {
-        ProfilePage()
-    }
+    LifeMusicTheme { ProfilePage() }
 }
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "ProfilePage - Dark Mode")
 @Composable
 fun ProfilePagePreviewDark() {
-    LifeMusicTheme {
-        ProfilePage()
-    }
+    LifeMusicTheme { ProfilePage() }
 }
