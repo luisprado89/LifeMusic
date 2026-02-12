@@ -7,24 +7,24 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.luis.lifemusic.data.AppContainer
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 
 /**
  * AppNavHost centraliza toda la navegación de la app.
  *
- * ✅ Regla que seguimos:
- * - Navegamos por IDs estables (songId) y NO por títulos (title) para evitar errores
- *   si hay canciones repetidas o el texto cambia.
+ * ✅ Regla:
+ * - Navegamos por IDs estables (songId) y NO por títulos.
  *
- * ✅ Importante (estado):
- * - De momento usamos sampleSongs para mostrar pantallas.
- * - Más adelante: AppNavHost no debería depender de sampleSongs,
- *   sino de ViewModels + Room/Retrofit.
+ * ✅ Estado:
+ * - De momento seguimos con sampleSongs para pintar UI.
+ * - Siguiente paso: ViewModels + repos (Room/DataStore/Retrofit) usando AppContainer.
  */
 @Composable
 fun AppNavHost(
     navController: NavHostController,
+    appContainer: AppContainer,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -38,9 +38,13 @@ fun AppNavHost(
         // ---------------------------
 
         composable(LoginDestination.route) {
+            /**
+             * ⚠️ De momento usamos LoginPage directo (sin VM) para que compile.
+             * En el siguiente paso lo cambiamos por:
+             * LoginRoute(appContainer, onLoginOk = { ... }, ...)
+             */
             LoginPage(
                 onLoginClick = {
-                    // ✅ Opción: evitamos volver a Login con back si ya estás dentro
                     navController.navigate(HomeDestination.route) {
                         popUpTo(LoginDestination.route) { inclusive = true }
                         launchSingleTop = true
@@ -55,8 +59,6 @@ fun AppNavHost(
             RegisterPage(
                 onBackClick = { navController.popBackStack() },
                 onRegisterClick = {
-                    // ✅ En el futuro: aquí el VM validará y guardará usuario en Room.
-                    // Si el registro es OK, entramos a Home.
                     navController.navigate(HomeDestination.route) {
                         popUpTo(LoginDestination.route) { inclusive = true }
                         launchSingleTop = true
@@ -68,7 +70,6 @@ fun AppNavHost(
         composable(RecoverDestination.route) {
             RecoverPasswordPage(
                 onBackClick = { navController.popBackStack() }
-                // El reset real se conectará luego con Room (usuario + pregunta/respuesta)
             )
         }
 
@@ -81,7 +82,6 @@ fun AppNavHost(
                 onNavigateToList = { navController.navigate(ListDestination.route) },
                 onNavigateToProfile = { navController.navigate(ProfileDestination.route) },
                 onNavigateToDetail = { songId ->
-                    // ✅ Navegación por ID: detail/{songId}
                     navController.navigate("${DetailDestination.route}/$songId")
                 }
             )
@@ -96,22 +96,15 @@ fun AppNavHost(
             )
         }
 
-        /**
-         * Detail usa un argumento obligatorio songId:
-         * routeWithArgs = "detail/{songId}"
-         */
+        // DETAIL con argumento
         composable(
             route = DetailDestination.routeWithArgs,
             arguments = listOf(
                 navArgument(DetailDestination.songIdArg) { type = NavType.IntType }
             )
         ) { backStackEntry ->
-
-            // ✅ Recuperamos el songId desde argumentos
             val songId = backStackEntry.arguments?.getInt(DetailDestination.songIdArg)
 
-            // ✅ De momento buscamos en sampleSongs (temporal).
-            // Luego: esto vendrá de Room / ViewModel.
             val song = sampleSongs.firstOrNull { it.id == songId } ?: sampleSongs.first()
 
             DetailPage(
@@ -123,8 +116,6 @@ fun AppNavHost(
                 duration = song.duration,
                 isFavoriteInitial = song.isFavorite,
                 onBackClick = { navController.popBackStack() }
-                // Si quieres un botón "Volver al listado", NO hace falta otra acción:
-                // popBackStack() ya vuelve a la pantalla anterior.
             )
         }
 
@@ -132,10 +123,8 @@ fun AppNavHost(
             ProfilePage(
                 onBackClick = { navController.popBackStack() },
                 onLogoutClick = {
-                    // ✅ Opción 2 (la que te gusta): navegación limpia al hacer logout.
-                    // Elimina el backstack y vuelve a Login como nueva raíz.
                     navController.navigate(LoginDestination.route) {
-                        popUpTo(0) { inclusive = true } // borra TODO el stack
+                        popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
                 }

@@ -8,10 +8,19 @@ import com.luis.lifemusic.data.local.entities.FavoriteEntity
 import com.luis.lifemusic.data.local.entities.UserEntity
 
 /**
- * Base de datos Room.
+ * Base de datos Room de la app.
  *
- * ✅ De momento: users + favorites
- * - Más adelante podemos añadir tablas si quieres persistir canciones o cachear la API.
+ * ✅ Regla:
+ * - Este archivo NO crea la base de datos (no hace Room.databaseBuilder aquí).
+ * - Solo define:
+ *   - entidades
+ *   - versionado
+ *   - getters a DAOs
+ *
+ * 👉 ¿Por qué?
+ * - Mantiene la responsabilidad clara:
+ *   - RoomDatabase = "contrato" de la BD
+ *   - AppContainer = "fábrica" / creador de dependencias
  */
 @Database(
     entities = [
@@ -22,6 +31,10 @@ import com.luis.lifemusic.data.local.entities.UserEntity
     exportSchema = false
 )
 abstract class LifeMusicDatabase : RoomDatabase() {
+
+    /** DAO de usuarios (registro, login, perfil) */
     abstract fun userDao(): UserDao
+
+    /** DAO de favoritos (canciones favoritas por usuario) */
     abstract fun favoriteDao(): FavoriteDao
 }
