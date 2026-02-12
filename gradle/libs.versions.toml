@@ -14,6 +14,13 @@ navigationCompose = "2.9.7"
 
 # Room Database (persistencia local con SQLite + anotaciones)
 roomRuntime = "2.7.1"  # Room Database
+# -------------------------------
+# Persistencia ligera (DataStore)
+# -------------------------------
+# Se usará para guardar sesión actual (userId logueado)
+# y posibles preferencias simples (tema oscuro, flags, etc.)
+datastorePreferences = "1.1.1"
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +45,12 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomRuntime" }  # Procesador de anotaciones para Room
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomRuntime" }  # Extensiones KTX para Room
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }  # Implementación en tiempo de ejecución de Room
+# -------------------------------
+# DataStore Preferences
+# -------------------------------
+# Implementación oficial de DataStore tipo clave-valor.
+# Sustituye a SharedPreferences en proyectos modernos.
+androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 
 
 [plugins]

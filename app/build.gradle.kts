@@ -72,4 +72,14 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // ------------------------------------
+    // DataStore (persistencia ligera)
+    // ------------------------------------
+    // Se usará para guardar:
+    // - userId de sesión activa
+    // - posibles preferencias simples (ej: tema oscuro)
+    // No requiere KSP ni procesador de anotaciones.
+    implementation(libs.androidx.datastore.preferences)
+
+
 }
