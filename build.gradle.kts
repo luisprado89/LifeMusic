@@ -3,4 +3,10 @@ plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.compose) apply false
+
+// Plugin KSP (Kotlin Symbol Processing)
+// Necesario para el procesamiento de anotaciones de Room (@Entity, @Dao, etc.)
+// Genera el código en tiempo de compilación.
+    id("com.google.devtools.ksp") version "2.0.21-1.0.27" apply false
+
 }
