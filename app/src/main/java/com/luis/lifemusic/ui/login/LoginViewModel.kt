@@ -1,6 +1,5 @@
 package com.luis.lifemusic.ui.login
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.luis.lifemusic.data.repository.SessionRepository
@@ -13,10 +12,15 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel de Login.
  *
- * ✅ Responsabilidad:
- * - Mantener estado (username/password/loading/error)
- * - Ejecutar login contra UserRepository
- * - Si es OK, guardar userId en SessionRepository (DataStore)
+ * Responsabilidades:
+ * - Mantener LoginUiState con StateFlow.
+ * - Validar campos.
+ * - Ejecutar login en repositorio.
+ * - Persistir sesión en DataStore (sessionRepository).
+ *
+ * Importante:
+ * - No navega directamente.
+ * - Informa resultado por callback para que la pantalla/NavHost decidan navegación.
  */
 class LoginViewModel(
     private val userRepository: UserRepository,
@@ -34,10 +38,6 @@ class LoginViewModel(
         _uiState.update { it.copy(password = value, errorMessage = null) }
     }
 
-    /**
-     * Devuelve true si el login fue correcto.
-     * (La navegación NO la hace el VM; la hará la pantalla con callback)
-     */
     fun tryLogin(onResult: (Boolean) -> Unit) {
         val current = _uiState.value
 
@@ -58,7 +58,10 @@ class LoginViewModel(
                 onResult(true)
             } else {
                 _uiState.update {
-                    it.copy(isLoading = false, errorMessage = "Credenciales incorrectas")
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Credenciales incorrectas"
+                    )
                 }
                 onResult(false)
             }

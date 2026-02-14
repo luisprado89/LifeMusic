@@ -1,9 +1,11 @@
 package com.luis.lifemusic.ui.login
 
 /**
- * Estado de la pantalla Login.
+ * Estado inmutable de la pantalla Login.
  *
- * ✅ UIState = “foto” de la pantalla
+ * - username/password: datos de entrada.
+ * - isLoading: controla bloqueo visual y spinner.
+ * - errorMessage: mensaje user-friendly si falla validación/login.
  */
 data class LoginUiState(
     val username: String = "",

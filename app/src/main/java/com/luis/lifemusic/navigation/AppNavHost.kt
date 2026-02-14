@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.luis.lifemusic.data.AppContainer
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
+import com.luis.lifemusic.ui.login.LoginRoute
 
 /**
  * AppNavHost centraliza toda la navegación de la app.
@@ -39,12 +40,11 @@ fun AppNavHost(
 
         composable(LoginDestination.route) {
             /**
-             * ⚠️ De momento usamos LoginPage directo (sin VM) para que compile.
-             * En el siguiente paso lo cambiamos por:
-             * LoginRoute(appContainer, onLoginOk = { ... }, ...)
+             * Login ya conectado a ViewModel (Route pattern).
+             * La navegación sigue en NavHost (no en el ViewModel).
              */
-            LoginPage(
-                onLoginClick = {
+            LoginRoute(
+                onLoginSuccess = {
                     navController.navigate(HomeDestination.route) {
                         popUpTo(LoginDestination.route) { inclusive = true }
                         launchSingleTop = true

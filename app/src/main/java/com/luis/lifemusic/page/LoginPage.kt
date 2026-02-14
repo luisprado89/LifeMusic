@@ -24,38 +24,34 @@ import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 /**
- * ✅ Destino de navegación de la pantalla Login.
- *
- * ¿Por qué existe este object?
- * - Centraliza la ruta (route) y el título (title) de la pantalla.
- * - Evita "strings sueltos" repetidos por la app (más mantenible).
- * - Facilita construir el NavHost y referenciar esta pantalla de forma consistente.
+ * Destino de navegación para Login.
+ * Se mantiene aquí para centralizar route/title y evitar strings sueltos.
  */
 object LoginDestination : NavigationDestination {
     override val route = "login"
     override val title = "Login"
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Pantalla de Login 100% UI.
+ *
+ * Reglas que cumple:
+ * - No usa remember para estado de producción.
+ * - Todo estado viene por parámetros (desde ViewModel).
+ * - Solo emite eventos mediante callbacks.
+ */
 @Composable
 fun LoginPage(
     username: String,
     password: String,
+    isLoading: Boolean,
+    errorMessage: String?,
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit = {},
     onGoToRegister: () -> Unit = {},
     onGoToRecover: () -> Unit = {}
 ) {
-    /**
-     * ⚠️ Importante (MVVM):
-     * Esta pantalla NO guarda estado interno con remember.
-     * Recibe username/password y callbacks desde fuera (ViewModel).
-     *
-     * Ventaja:
-     * - UI pura (@Composable) sin lógica de negocio.
-     * - El estado puede venir de un ViewModel con StateFlow, cumpliendo el enunciado del proyecto.
-     */
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -67,8 +63,7 @@ fun LoginPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
-            // LOGO
+            // Logo de app
             Image(
                 painter = painterResource(id = R.drawable.logo_lm),
                 contentDescription = "Logo LifeMusic",
@@ -77,7 +72,6 @@ fun LoginPage(
                     .padding(bottom = 12.dp)
             )
 
-            // Título principal
             Text(
                 text = "LifeMusic",
                 fontSize = 28.sp,
@@ -85,7 +79,6 @@ fun LoginPage(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            // Subtítulo
             Text(
                 text = "Tu música para cada momento de la vida",
                 fontSize = 14.sp,
@@ -94,7 +87,6 @@ fun LoginPage(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Sección de bienvenida
             Text(
                 text = "Bienvenido",
                 fontSize = 20.sp,
@@ -102,15 +94,14 @@ fun LoginPage(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Campo usuario o email
+            // Campo usuario/email
             OutlinedTextField(
                 value = username,
                 onValueChange = onUsernameChange,
                 label = { Text("Nombre de usuario o correo electrónico") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = "Usuario")
-                },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Usuario") },
                 singleLine = true,
+                enabled = !isLoading, // Bloqueamos edición durante login
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -122,51 +113,71 @@ fun LoginPage(
                 value = password,
                 onValueChange = onPasswordChange,
                 label = { Text("Contraseña") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = "Contraseña")
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
+                enabled = !isLoading, // Bloqueamos edición durante login
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 20.dp)
+                    .padding(bottom = 8.dp)
             )
 
-            // Botón iniciar sesión
+            // Mensaje de error del ViewModel (si existe)
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                )
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Botón login + loading
             Button(
                 onClick = onLoginClick,
+                enabled = !isLoading, // Evita doble click mientras carga
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(
-                    text = "Iniciar sesión",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Text(
+                        text = "Iniciar sesión",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
-            // Recuperación contraseña
             Text(
                 text = "¿Olvidaste tu contraseña?",
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 modifier = Modifier
                     .padding(top = 16.dp)
-                    .clickable { onGoToRecover() }
+                    .clickable(enabled = !isLoading) { onGoToRecover() }
             )
 
-            // Link registro
             Spacer(modifier = Modifier.height(12.dp))
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = "¿No tienes cuenta? ")
                 Text(
                     text = "Regístrate",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable { onGoToRegister() }
+                    modifier = Modifier.clickable(enabled = !isLoading) { onGoToRegister() }
                 )
             }
         }
@@ -174,8 +185,7 @@ fun LoginPage(
 }
 
 /**
- * Previews con datos fake SOLO para diseño.
- * (Luego en MVVM estos valores vendrán del ViewModel)
+ * Preview solo visual (datos fake, sin ViewModel real).
  */
 @Preview(showBackground = true, name = "LoginPage - Light Mode")
 @Composable
@@ -184,19 +194,27 @@ fun LoginPagePreviewLight() {
         LoginPage(
             username = "",
             password = "",
+            isLoading = false,
+            errorMessage = null,
             onUsernameChange = {},
             onPasswordChange = {}
         )
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "LoginPage - Dark Mode")
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    name = "LoginPage - Dark Mode"
+)
 @Composable
 fun LoginPagePreviewDark() {
     LifeMusicTheme {
         LoginPage(
             username = "luis@lifemusic.com",
             password = "1234",
+            isLoading = false,
+            errorMessage = "Credenciales incorrectas",
             onUsernameChange = {},
             onPasswordChange = {}
         )
