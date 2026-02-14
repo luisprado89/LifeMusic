@@ -19,6 +19,11 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
     fun observeById(userId: Long): Flow<UserEntity?>
 
+    // ✅ Para updates: obtener por id en modo suspend
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    suspend fun getById(userId: Long): UserEntity?
+
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(user: UserEntity): Long
 

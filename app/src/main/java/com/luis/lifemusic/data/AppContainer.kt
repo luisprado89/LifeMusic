@@ -3,8 +3,12 @@ package com.luis.lifemusic.data
 import android.content.Context
 import androidx.room.Room
 import com.luis.lifemusic.data.local.LifeMusicDatabase
+import com.luis.lifemusic.data.repository.FavoritesRepository
+import com.luis.lifemusic.data.repository.FavoritesRepositoryImpl
 import com.luis.lifemusic.data.repository.SessionRepository
 import com.luis.lifemusic.data.repository.SessionRepositoryImpl
+import com.luis.lifemusic.data.repository.UserRepository
+import com.luis.lifemusic.data.repository.UserRepositoryImpl
 
 /**
  * AppContainer = contenedor manual de dependencias (sin Hilt/Koin).
@@ -62,6 +66,15 @@ class AppContainer(appContext: Context) {
     val sessionRepository: SessionRepository by lazy {
         SessionRepositoryImpl(applicationContext)
     }
+
+    val userRepository: UserRepository by lazy {
+        UserRepositoryImpl(userDao)
+    }
+
+    val favoritesRepository: FavoritesRepository by lazy {
+        FavoritesRepositoryImpl(favoriteDao)
+    }
+
 
     // ------------------------------------------------------------
     // 3) RETROFIT (API remota) — listo para añadirlo más adelante
