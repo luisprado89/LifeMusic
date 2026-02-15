@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
+import com.luis.lifemusic.ui.detail.DetailRoute
 import com.luis.lifemusic.ui.home.HomeRoute
 import com.luis.lifemusic.ui.list.ListRoute
 import com.luis.lifemusic.ui.login.LoginRoute
@@ -23,8 +24,8 @@ import com.luis.lifemusic.ui.register.RegisterRoute
  *
  * ✅ Estado actual:
  * - Auth (Login/Register/Recover) usa Route pattern (ViewModel + UiState).
- * - Main (Home/List) también usa Route pattern con guard de sesión.
- * - Detail/Profile siguen siendo Pages (de momento).
+ * - Main (Home/List/Detail) también usa Route pattern con guard de sesión.
+ * - Profile sigue siendo Page (de momento).
  *
  * 🔜 Siguiente paso:
  * - Terminar ViewModels + repos (Room/DataStore/Retrofit)
@@ -144,26 +145,29 @@ fun AppNavHost(
 
 
         // DETAIL con argumento
+
         composable(
             route = DetailDestination.routeWithArgs,
             arguments = listOf(
                 navArgument(DetailDestination.songIdArg) { type = NavType.IntType }
             )
-        ) { backStackEntry ->
-            val songId = backStackEntry.arguments?.getInt(DetailDestination.songIdArg)
-
-            // De momento seguimos con sampleSongs para esta pantalla.
-            val song = sampleSongs.firstOrNull { it.id == songId } ?: sampleSongs.first()
-
-            DetailPage(
-                songId = song.id,
-                imageRes = song.imageRes,
-                title = song.title,
-                artist = song.artist,
-                album = song.album,
-                duration = song.duration,
-                isFavoriteInitial = song.isFavorite,
-                onBackClick = { navController.popBackStack() }
+        ) {
+            /**
+             * DetailRoute:
+             * - Conecta DetailPage (UI pura) con DetailViewModel.
+             * - Lee songId desde SavedStateHandle.
+             * - Sincroniza favoritos (Room).
+             * - Incluye guard de sesión: si la sesión caduca,
+             *   redirige a Login limpiando back stack.
+             */
+            DetailRoute(
+                onBackClick = { navController.popBackStack() },
+                onSessionExpired = {
+                    navController.navigate(LoginDestination.route) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 

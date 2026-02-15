@@ -5,7 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,9 +17,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.R
-import com.luis.lifemusic.component.MainScaffold
+import com.luis.lifemusic.data.Song
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+import com.luis.lifemusic.component.MainScaffold
 
 /**
  * Destination de la pantalla de detalle.
@@ -30,9 +31,6 @@ import com.luis.lifemusic.ui.theme.LifeMusicTheme
  *
  * IMPORTANTE:
  * No navegamos usando el título, sino un id estable (songId).
- * Esto es fundamental para:
- *  - Navegación segura
- *  - Futuro uso con ViewModel + Room
  */
 object DetailDestination : NavigationDestination {
     override val route = "detail"
@@ -42,35 +40,66 @@ object DetailDestination : NavigationDestination {
     val routeWithArgs = "$route/{$songIdArg}"
 }
 
+/**
+ * DetailPage (UI pura).
+ *
+ * ✅ Regla MVVM:
+ * - La pantalla NO mantiene estado local de favorito (no remember).
+ * - Recibe todo desde DetailRoute/DetailViewModel:
+ *   canción, favorito, loading/error y callbacks.
+ */
 @Composable
 fun DetailPage(
-    songId: Int,
-    imageRes: Int,
-    title: String,
-    artist: String,
-    album: String,
-    duration: String,
-    isFavoriteInitial: Boolean = false,
+    song: Song?,
+    isFavorite: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    onFavoriteClick: () -> Unit,
     onBackClick: () -> Unit = {}
 ) {
-    /*
-     * 🔴 ESTADO LOCAL TEMPORAL (IMPORTANTE)
-     *
-     * Este estado se usa SOLO para que la UI sea interactiva mientras:
-     *  - No existe todavía un ViewModel
-     *  - No existe todavía Room
-     *
-     * Cuando se implemente MVVM:
-     *  - `isFavorite` vendrá del UiState del ViewModel
-     *  - Este remember desaparecerá
-     *  - El botón llamará a un evento del ViewModel
-     */
-    var isFavorite by remember { mutableStateOf(isFavoriteInitial) }
-
     MainScaffold(
         title = DetailDestination.title,
         onBackClick = onBackClick
     ) { padding ->
+
+        // 🔄 Estado de carga
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@MainScaffold
+        }
+
+        // ❌ Estado de error
+        if (!errorMessage.isNullOrBlank()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onRetry) {
+                    Text("Reintentar")
+                }
+            }
+            return@MainScaffold
+        }
+
+        // ✅ Estado normal (si no hay loading/error, esperamos tener canción).
+        val currentSong = song ?: return@MainScaffold
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -78,11 +107,10 @@ fun DetailPage(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             // Imagen del álbum
             Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = title,
+                painter = painterResource(id = currentSong.imageRes),
+                contentDescription = currentSong.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(260.dp)
@@ -91,7 +119,7 @@ fun DetailPage(
 
             // Título de la canción
             Text(
-                text = title,
+                text = currentSong.title,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -99,7 +127,7 @@ fun DetailPage(
 
             // Artista y álbum
             Text(
-                text = "$artist • $album",
+                text = "${currentSong.artist} • ${currentSong.album}",
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -113,7 +141,7 @@ fun DetailPage(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Duración: $duration",
+                    text = "Duración: ${currentSong.duration}",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     fontSize = 14.sp
                 )
@@ -121,12 +149,9 @@ fun DetailPage(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Botón favoritos (estado LOCAL por ahora)
+            // Botón favoritos (estado REAL desde ViewModel)
             Button(
-                onClick = {
-                    // 🔹 Cambia solo el estado visual por ahora
-                    isFavorite = !isFavorite
-                },
+                onClick = onFavoriteClick,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isFavorite) Color.Red else MaterialTheme.colorScheme.surfaceVariant,
                     contentColor = if (isFavorite) Color.White else MaterialTheme.colorScheme.onSurface
@@ -148,19 +173,25 @@ fun DetailPage(
 
 /**
  * Previews SOLO para diseño.
- * El songId aquí no se usa realmente.
  */
 @Preview(showBackground = true, name = "DetailPage - Light Mode")
 @Composable
 fun DetailPagePreviewLight() {
     LifeMusicTheme {
         DetailPage(
-            songId = 1,
-            imageRes = R.drawable.queen,
-            title = "Bohemian Rhapsody",
-            artist = "Queen",
-            album = "A Night at the Opera",
-            duration = "5:55"
+            song = Song(
+                id = 1,
+                imageRes = R.drawable.queen,
+                title = "Bohemian Rhapsody",
+                artist = "Queen",
+                album = "A Night at the Opera",
+                duration = "5:55"
+            ),
+            isFavorite = false,
+            isLoading = false,
+            errorMessage = null,
+            onRetry = {},
+            onFavoriteClick = {}
         )
     }
 }
@@ -170,12 +201,19 @@ fun DetailPagePreviewLight() {
 fun DetailPagePreviewDark() {
     LifeMusicTheme {
         DetailPage(
-            songId = 1,
-            imageRes = R.drawable.queen,
-            title = "Bohemian Rhapsody",
-            artist = "Queen",
-            album = "A Night at the Opera",
-            duration = "5:55"
+            song = Song(
+                id = 1,
+                imageRes = R.drawable.queen,
+                title = "Bohemian Rhapsody",
+                artist = "Queen",
+                album = "A Night at the Opera",
+                duration = "5:55"
+            ),
+            isFavorite = true,
+            isLoading = false,
+            errorMessage = null,
+            onRetry = {},
+            onFavoriteClick = {}
         )
     }
 }
