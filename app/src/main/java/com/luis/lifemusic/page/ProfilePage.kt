@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,35 +29,67 @@ import com.luis.lifemusic.ui.theme.LifeMusicTheme
 /**
  * Destination de la pantalla de Perfil.
  *
- * ¿Por qué existe este objeto?
- * - Centraliza la "route" y el "title" para navegación.
+ * ✅ Por qué existe:
+ * - Centraliza "route" y "title" para navegación.
  * - Evita strings sueltos repartidos por el proyecto.
- * - AppNavHost usará ProfileDestination.route cuando llegue el momento.
+ * - AppNavHost usa ProfileDestination.route para navegar a esta pantalla.
  */
 object ProfileDestination : NavigationDestination {
     override val route = "profile"
     override val title = "Mi Perfil"
 }
 
+/**
+ * ProfilePage (UI pura).
+ *
+ * ✅ Regla MVVM:
+ * - La pantalla NO consulta Room, NO toca DataStore y NO tiene lógica de negocio.
+ * - Todo el estado entra por parámetros (ProfileUiState).
+ * - Todas las acciones salen por callbacks (eventos hacia el ViewModel).
+ *
+ * ✅ Estados visuales:
+ * - isLoading: muestra indicador de progreso.
+ * - errorMessage: muestra feedback de error.
+ *
+ * Nota:
+ * - El modo edición (isEditing) viene controlado por el ViewModel.
+ */
 @Composable
 fun ProfilePage(
-    initialName: String = "Luis",
-    initialEmail: String = "luis@lifemusic.com",
-    verified: Boolean = true,
-    memberSince: String = "Enero 2023",
+    name: String,
+    email: String,
+    verified: Boolean,
+    memberSince: String,
+    isEditing: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onEditClick: () -> Unit,
+    onCancelEdit: () -> Unit,
+    onSaveChanges: () -> Unit,
     onBackClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
-    // Estado local SOLO para UI (más adelante vendrá desde ViewModel/Room)
-    var name by remember { mutableStateOf(initialName) }
-    var email by remember { mutableStateOf(initialEmail) }
-    var isEditing by remember { mutableStateOf(false) }
-
     MainScaffold(
-        // Usamos el title reminderizado en el Destination para consistencia
+        // Usamos el title centralizado en el Destination para consistencia.
         title = ProfileDestination.title,
         onBackClick = onBackClick
     ) { padding ->
+
+        // Estado de carga: mostramos progreso centrado.
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@MainScaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,7 +98,8 @@ fun ProfilePage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
-            // Imagen de perfil circular (letra inicial)
+
+            // Avatar circular con inicial del nombre.
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -88,10 +124,25 @@ fun ProfilePage(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Feedback de error (si existe).
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             if (!isEditing) {
-                // 🔹 Modo visualización
+                // ===========================
+                // MODO VISUALIZACIÓN
+                // ===========================
                 ProfileInfoItem(Icons.Default.Person, "Nombre completo", name)
                 Spacer(modifier = Modifier.height(12.dp))
                 ProfileInfoItem(Icons.Default.Email, "Correo electrónico", email)
@@ -107,7 +158,7 @@ fun ProfilePage(
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
-                    onClick = { isEditing = true },
+                    onClick = onEditClick,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -118,8 +169,6 @@ fun ProfilePage(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Callback de logout: por ahora solo UI/navegación.
-                // Más adelante aquí también limpiaremos sesión/estado en Room si lo implementamos.
                 OutlinedButton(
                     onClick = onLogoutClick,
                     shape = RoundedCornerShape(12.dp),
@@ -132,10 +181,12 @@ fun ProfilePage(
                 }
 
             } else {
-                // 🔹 Modo edición (solo UI local por ahora)
+                // ===========================
+                // MODO EDICIÓN
+                // ===========================
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = onNameChange,
                     label = { Text("Nombre completo") },
                     leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
@@ -145,7 +196,7 @@ fun ProfilePage(
 
                 OutlinedTextField(
                     value = email,
-                    onValueChange = { email = it },
+                    onValueChange = onEmailChange,
                     label = { Text("Correo electrónico") },
                     leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
@@ -164,7 +215,7 @@ fun ProfilePage(
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
-                    onClick = { isEditing = false },
+                    onClick = onSaveChanges,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -176,7 +227,7 @@ fun ProfilePage(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedButton(
-                    onClick = { isEditing = false },
+                    onClick = onCancelEdit,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -189,6 +240,9 @@ fun ProfilePage(
     }
 }
 
+/**
+ * Item reutilizable para mostrar información del perfil.
+ */
 @Composable
 fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
     Surface(
@@ -213,11 +267,41 @@ fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
 @Preview(showBackground = true, name = "ProfilePage - Light Mode")
 @Composable
 fun ProfilePagePreviewLight() {
-    LifeMusicTheme { ProfilePage() }
+    LifeMusicTheme {
+        ProfilePage(
+            name = "Luis",
+            email = "luis@lifemusic.com",
+            verified = true,
+            memberSince = "Enero 2023",
+            isEditing = false,
+            isLoading = false,
+            errorMessage = null,
+            onNameChange = {},
+            onEmailChange = {},
+            onEditClick = {},
+            onCancelEdit = {},
+            onSaveChanges = {}
+        )
+    }
 }
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "ProfilePage - Dark Mode")
 @Composable
 fun ProfilePagePreviewDark() {
-    LifeMusicTheme { ProfilePage() }
+    LifeMusicTheme {
+        ProfilePage(
+            name = "Luis",
+            email = "luis@lifemusic.com",
+            verified = true,
+            memberSince = "Enero 2023",
+            isEditing = false,
+            isLoading = false,
+            errorMessage = null,
+            onNameChange = {},
+            onEmailChange = {},
+            onEditClick = {},
+            onCancelEdit = {},
+            onSaveChanges = {}
+        )
+    }
 }

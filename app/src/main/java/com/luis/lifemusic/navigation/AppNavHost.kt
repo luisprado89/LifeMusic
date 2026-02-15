@@ -7,12 +7,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 import com.luis.lifemusic.ui.detail.DetailRoute
 import com.luis.lifemusic.ui.home.HomeRoute
 import com.luis.lifemusic.ui.list.ListRoute
 import com.luis.lifemusic.ui.login.LoginRoute
+import com.luis.lifemusic.ui.profile.ProfileRoute
 import com.luis.lifemusic.ui.recover.RecoverRoute
 import com.luis.lifemusic.ui.register.RegisterRoute
 
@@ -22,14 +22,14 @@ import com.luis.lifemusic.ui.register.RegisterRoute
  * ✅ Regla:
  * - Navegamos por IDs estables (songId) y NO por títulos.
  *
- * ✅ Estado actual:
- * - Auth (Login/Register/Recover) usa Route pattern (ViewModel + UiState).
- * - Main (Home/List/Detail) también usa Route pattern con guard de sesión.
- * - Profile sigue siendo Page (de momento).
+ * ✅ Arquitectura:
+ * - Las pantallas "Page" son UI pura.
+ * - Las pantallas "Route" conectan UI con ViewModels (MVVM).
+ * - El guard de sesión se aplica en cada Route (hasActiveSession).
  *
- * 🔜 Siguiente paso:
- * - Terminar ViewModels + repos (Room/DataStore/Retrofit)
- *   manteniendo la inyección desde AppViewModelProvider.
+ * 🔜 Evolución:
+ * - Sustituir sampleSongs por repositorios reales (Room/Retrofit).
+ * - Manteniendo la inyección desde AppViewModelProvider.
  */
 @Composable
 fun AppNavHost(
@@ -42,16 +42,15 @@ fun AppNavHost(
         modifier = modifier
     ) {
 
-        // ===========================
+        // ---------------------------
         // AUTH FLOW
-        // ===========================
+        // ---------------------------
 
         composable(LoginDestination.route) {
             /**
              * LoginRoute:
-             * - Obtiene su ViewModel internamente (Factory global).
-             * - Emite eventos hacia el NavHost para navegar.
-             * - El ViewModel NO navega.
+             * - Conecta LoginPage (UI pura) con LoginViewModel.
+             * - La navegación se resuelve aquí en NavHost (no en el ViewModel).
              */
             LoginRoute(
                 onLoginSuccess = {
@@ -60,20 +59,16 @@ fun AppNavHost(
                         launchSingleTop = true
                     }
                 },
-                onGoToRegister = {
-                    navController.navigate(RegisterDestination.route)
-                },
-                onGoToRecover = {
-                    navController.navigate(RecoverDestination.route)
-                }
+                onGoToRegister = { navController.navigate(RegisterDestination.route) },
+                onGoToRecover = { navController.navigate(RecoverDestination.route) }
             )
         }
 
         composable(RegisterDestination.route) {
             /**
              * RegisterRoute:
-             * - Conecta UI + ViewModel.
-             * - En éxito notifica al NavHost para navegar.
+             * - Conecta RegisterPage (UI pura) con RegisterViewModel.
+             * - Tras registro exitoso, navegamos a Home limpiando back stack.
              */
             RegisterRoute(
                 onBackClick = { navController.popBackStack() },
@@ -89,23 +84,24 @@ fun AppNavHost(
         composable(RecoverDestination.route) {
             /**
              * RecoverRoute:
-             * - Controla recuperación de contraseña con estado desde ViewModel.
-             * - La navegación se resuelve aquí (NavHost), no en el VM.
+             * - Conecta RecoverPasswordPage (UI pura) con RecoverViewModel.
+             * - Gestiona recuperación por pregunta de seguridad.
              */
             RecoverRoute(
                 onBackClick = { navController.popBackStack() }
             )
         }
 
-        // ===========================
+        // ---------------------------
         // MAIN FLOW
-        // ===========================
+        // ---------------------------
 
         composable(HomeDestination.route) {
             /**
              * HomeRoute:
              * - Conecta HomePage (UI pura) con HomeViewModel.
-             * - Incluye guard de sesión: si se pierde sesión, avisa al NavHost.
+             * - Incluye guard de sesión:
+             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
              */
             HomeRoute(
                 onNavigateToList = { navController.navigate(ListDestination.route) },
@@ -114,7 +110,6 @@ fun AppNavHost(
                     navController.navigate("${DetailDestination.route}/$songId")
                 },
                 onSessionExpired = {
-                    // Si no hay sesión activa, volvemos a Login y limpiamos el back stack.
                     navController.navigate(LoginDestination.route) {
                         popUpTo(0) { inclusive = true }
                         launchSingleTop = true
@@ -127,7 +122,8 @@ fun AppNavHost(
             /**
              * ListRoute:
              * - Conecta ListPage (UI pura) con ListViewModel.
-             * - Incluye guard de sesión: si se pierde la sesión, vuelve a Login.
+             * - Incluye guard de sesión:
+             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
              */
             ListRoute(
                 onBackClick = { navController.popBackStack() },
@@ -143,9 +139,7 @@ fun AppNavHost(
             )
         }
 
-
         // DETAIL con argumento
-
         composable(
             route = DetailDestination.routeWithArgs,
             arguments = listOf(
@@ -155,10 +149,10 @@ fun AppNavHost(
             /**
              * DetailRoute:
              * - Conecta DetailPage (UI pura) con DetailViewModel.
-             * - Lee songId desde SavedStateHandle.
-             * - Sincroniza favoritos (Room).
-             * - Incluye guard de sesión: si la sesión caduca,
-             *   redirige a Login limpiando back stack.
+             * - Lee songId desde argumentos (SavedStateHandle).
+             * - Gestiona favoritos reales (Room) por usuario.
+             * - Incluye guard de sesión:
+             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
              */
             DetailRoute(
                 onBackClick = { navController.popBackStack() },
@@ -172,9 +166,17 @@ fun AppNavHost(
         }
 
         composable(ProfileDestination.route) {
-            ProfilePage(
+            /**
+             * ProfileRoute:
+             * - Conecta ProfilePage (UI pura) con ProfileViewModel.
+             * - Permite editar nombre/email y guardar en Room.
+             * - Logout: lo ejecuta el ViewModel limpiando DataStore.
+             *   Cuando eso ocurre, el guard de sesión detecta session inválida y
+             *   se dispara onSessionExpired (redirección a Login).
+             */
+            ProfileRoute(
                 onBackClick = { navController.popBackStack() },
-                onLogoutClick = {
+                onSessionExpired = {
                     navController.navigate(LoginDestination.route) {
                         popUpTo(0) { inclusive = true }
                         launchSingleTop = true
