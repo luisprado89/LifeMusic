@@ -10,6 +10,8 @@ import androidx.navigation.navArgument
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 import com.luis.lifemusic.ui.login.LoginRoute
+import com.luis.lifemusic.ui.recover.RecoverRoute
+import com.luis.lifemusic.ui.register.RegisterRoute
 
 /**
  * AppNavHost centraliza toda la navegación de la app.
@@ -17,9 +19,12 @@ import com.luis.lifemusic.ui.login.LoginRoute
  * ✅ Regla:
  * - Navegamos por IDs estables (songId) y NO por títulos.
  *
- * ✅ Estado:
- * - De momento seguimos con sampleSongs para pintar UI.
- * - Siguiente paso: terminar ViewModels + repos (Room/DataStore/Retrofit)
+ * ✅ Estado actual:
+ * - Login, Register y Recover ya usan Route pattern.
+ * - De momento seguimos con sampleSongs para pintar UI en Home/List/Detail.
+ *
+ * 🔜 Siguiente paso:
+ * - Terminar integración completa con ViewModels + repos (Room/DataStore/Retrofit)
  *   manteniendo la inyección desde AppViewModelProvider.
  */
 @Composable
@@ -33,14 +38,17 @@ fun AppNavHost(
         modifier = modifier
     ) {
 
-        // ---------------------------
+        // ===========================
         // AUTH FLOW
-        // ---------------------------
+        // ===========================
 
         composable(LoginDestination.route) {
+
             /**
-             * Login ya conectado a ViewModel (Route pattern).
-             * La navegación sigue en NavHost (no en el ViewModel).
+             * LoginRoute:
+             * - Obtiene su ViewModel internamente.
+             * - Expone eventos hacia el NavHost.
+             * - El ViewModel NO navega directamente.
              */
             LoginRoute(
                 onLoginSuccess = {
@@ -49,15 +57,28 @@ fun AppNavHost(
                         launchSingleTop = true
                     }
                 },
-                onGoToRegister = { navController.navigate(RegisterDestination.route) },
-                onGoToRecover = { navController.navigate(RecoverDestination.route) }
+                onGoToRegister = {
+                    navController.navigate(RegisterDestination.route)
+                },
+                onGoToRecover = {
+                    navController.navigate(RecoverDestination.route)
+                }
             )
         }
 
         composable(RegisterDestination.route) {
-            RegisterPage(
-                onBackClick = { navController.popBackStack() },
-                onRegisterClick = {
+
+            /**
+             * RegisterRoute:
+             * - Conecta UI + ViewModel.
+             * - Notifica éxito mediante callback.
+             * - NavHost decide navegación posterior.
+             */
+            RegisterRoute(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onRegisterSuccess = {
                     navController.navigate(HomeDestination.route) {
                         popUpTo(LoginDestination.route) { inclusive = true }
                         launchSingleTop = true
@@ -67,19 +88,31 @@ fun AppNavHost(
         }
 
         composable(RecoverDestination.route) {
-            RecoverPasswordPage(
-                onBackClick = { navController.popBackStack() }
+
+            /**
+             * RecoverRoute:
+             * - Gestiona recuperación de contraseña.
+             * - No navega por sí misma.
+             */
+            RecoverRoute(
+                onBackClick = {
+                    navController.popBackStack()
+                }
             )
         }
 
-        // ---------------------------
+        // ===========================
         // MAIN FLOW
-        // ---------------------------
+        // ===========================
 
         composable(HomeDestination.route) {
             HomePage(
-                onNavigateToList = { navController.navigate(ListDestination.route) },
-                onNavigateToProfile = { navController.navigate(ProfileDestination.route) },
+                onNavigateToList = {
+                    navController.navigate(ListDestination.route)
+                },
+                onNavigateToProfile = {
+                    navController.navigate(ProfileDestination.route)
+                },
                 onNavigateToDetail = { songId ->
                     navController.navigate("${DetailDestination.route}/$songId")
                 }
@@ -88,7 +121,9 @@ fun AppNavHost(
 
         composable(ListDestination.route) {
             ListPage(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {
+                    navController.popBackStack()
+                },
                 onNavigateToDetail = { songId ->
                     navController.navigate("${DetailDestination.route}/$songId")
                 }
@@ -99,12 +134,18 @@ fun AppNavHost(
         composable(
             route = DetailDestination.routeWithArgs,
             arguments = listOf(
-                navArgument(DetailDestination.songIdArg) { type = NavType.IntType }
+                navArgument(DetailDestination.songIdArg) {
+                    type = NavType.IntType
+                }
             )
         ) { backStackEntry ->
-            val songId = backStackEntry.arguments?.getInt(DetailDestination.songIdArg)
 
-            val song = sampleSongs.firstOrNull { it.id == songId } ?: sampleSongs.first()
+            val songId =
+                backStackEntry.arguments?.getInt(DetailDestination.songIdArg)
+
+            val song =
+                sampleSongs.firstOrNull { it.id == songId }
+                    ?: sampleSongs.first()
 
             DetailPage(
                 songId = song.id,
@@ -114,13 +155,17 @@ fun AppNavHost(
                 album = song.album,
                 duration = song.duration,
                 isFavoriteInitial = song.isFavorite,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = {
+                    navController.popBackStack()
+                }
             )
         }
 
         composable(ProfileDestination.route) {
             ProfilePage(
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {
+                    navController.popBackStack()
+                },
                 onLogoutClick = {
                     navController.navigate(LoginDestination.route) {
                         popUpTo(0) { inclusive = true }

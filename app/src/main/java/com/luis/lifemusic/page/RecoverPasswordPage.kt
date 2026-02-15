@@ -1,31 +1,37 @@
 package com.luis.lifemusic.page
 
 import android.content.res.Configuration
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QuestionMark
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
-/**
- * Destination de recuperación.
- * - route: se usa en AppNavHost para navegar a esta pantalla.
- * - title: título que mostramos en la TopAppBar (MainScaffold).
- */
 object RecoverDestination : NavigationDestination {
-    override val route = "recover"
-    override val title = "Recuperar contraseña"
+    override val route: String = "recover"
+    override val title: String = "Recuperar contraseña"
 }
 
 /**
@@ -38,9 +44,9 @@ object RecoverDestination : NavigationDestination {
  *   - onSearchUserClick()
  *   - onResetPasswordClick()
  *
- * Esto facilita integrar MVVM + Room después:
- * - El ViewModel controlará el estado y validará si el usuario/correo existe.
- * - Room aportará la persistencia (usuarios + pregunta/respuesta ficticia).
+ * Esto facilita integrar MVVM + Room:
+ * - El ViewModel controla el estado y valida si el usuario existe.
+ * - Room aporta la persistencia (usuarios + pregunta/respuesta).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +57,8 @@ fun RecoverPasswordPage(
     newPassword: String,
     isQuestionLoaded: Boolean,
     isLoading: Boolean,
+    errorMessage: String? = null,
+    successMessage: String? = null,
     onUsernameChange: (String) -> Unit,
     onSecurityAnswerChange: (String) -> Unit,
     onNewPasswordChange: (String) -> Unit,
@@ -82,9 +90,7 @@ fun RecoverPasswordPage(
             OutlinedTextField(
                 value = username,
                 onValueChange = onUsernameChange,
-                label = { Text("Usuario o correo") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                singleLine = true,
+                label = { Text("Usuario") },
                 shape = RoundedCornerShape(8.dp),
                 enabled = !isLoading,
                 modifier = Modifier.fillMaxWidth()
@@ -110,12 +116,31 @@ fun RecoverPasswordPage(
                 }
             }
 
+            // Feedback de error del ViewModel (validación o credenciales de recuperación).
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            // Feedback de éxito tras cambiar la contraseña.
+            if (!successMessage.isNullOrBlank()) {
+                Text(
+                    text = successMessage,
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
             /**
              * ✅ Este bloque (Paso 2) solo se muestra cuando:
              * isQuestionLoaded == true
              *
-             * Eso significa que “el usuario/correo existe” y ya tenemos la pregunta cargada.
-             * En el futuro, el ViewModel lo activará tras consultar Room.
+             * Eso significa que “el usuario existe” y ya tenemos la pregunta cargada.
+             * El ViewModel lo activará tras consultar la BD.
              */
             if (isQuestionLoaded) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -135,6 +160,7 @@ fun RecoverPasswordPage(
                     onValueChange = onSecurityAnswerChange,
                     label = { Text("Tu respuesta") },
                     shape = RoundedCornerShape(8.dp),
+                    enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -142,10 +168,8 @@ fun RecoverPasswordPage(
                     value = newPassword,
                     onValueChange = onNewPasswordChange,
                     label = { Text("Nueva contraseña") },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(8.dp),
+                    enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -175,6 +199,8 @@ fun RecoverPasswordPagePreviewStep1Light() {
             newPassword = "",
             isQuestionLoaded = false,
             isLoading = false,
+            errorMessage = null,
+            successMessage = null,
             onUsernameChange = {},
             onSecurityAnswerChange = {},
             onNewPasswordChange = {}
@@ -182,7 +208,11 @@ fun RecoverPasswordPagePreviewStep1Light() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "RecoverPasswordPage - Paso 2 (Dark)")
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    name = "RecoverPasswordPage - Paso 2 (Dark)"
+)
 @Composable
 fun RecoverPasswordPagePreviewStep2Dark() {
     LifeMusicTheme {
@@ -193,6 +223,8 @@ fun RecoverPasswordPagePreviewStep2Dark() {
             newPassword = "",
             isQuestionLoaded = true,
             isLoading = false,
+            errorMessage = null,
+            successMessage = null,
             onUsernameChange = {},
             onSecurityAnswerChange = {},
             onNewPasswordChange = {}

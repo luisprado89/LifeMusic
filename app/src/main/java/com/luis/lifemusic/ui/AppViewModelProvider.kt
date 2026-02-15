@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.luis.lifemusic.LifeMusicApplication
 import com.luis.lifemusic.ui.login.LoginViewModel
+import com.luis.lifemusic.ui.recover.RecoverViewModel
 import com.luis.lifemusic.ui.register.RegisterViewModel
 
 /**
@@ -44,7 +45,10 @@ object AppViewModelProvider {
 
         initializer {
             // RecoverPasswordViewModel(...)
-            TODO("Crear RecoverPasswordViewModel")
+            RecoverViewModel(
+                userRepository = lifeMusicApp().appContainer.userRepository
+            )
+
         }
 
         // ------------------------------------
