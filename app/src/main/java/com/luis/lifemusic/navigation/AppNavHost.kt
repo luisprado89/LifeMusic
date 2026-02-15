@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 import com.luis.lifemusic.ui.login.LoginRoute
+import com.luis.lifemusic.ui.register.RegisterRoute
 
 /**
  * AppNavHost centraliza toda la navegación de la app.
@@ -55,16 +56,34 @@ fun AppNavHost(
         }
 
         composable(RegisterDestination.route) {
-            RegisterPage(
-                onBackClick = { navController.popBackStack() },
-                onRegisterClick = {
+
+            /**
+             * RegisterRoute sigue el patrón Route:
+             * - Obtiene su ViewModel internamente.
+             * - Observa el estado (StateFlow).
+             * - Llama a los callbacks cuando ocurre un evento externo
+             *   que afecta a navegación.
+             *
+             * NavHost sigue siendo el responsable de decidir
+             * hacia dónde navegar.
+             */
+            RegisterRoute(
+
+                onBackClick = {//Botón "volver atrás". Se limita a hacer pop del back stack.
+                    navController.popBackStack()
+                },
+
+                onRegisterSuccess = {//Se ejecuta cuando el registro es correcto. La Route decide cuándo hay éxito. NavHost decide qué hacer tras el éxito.
                     navController.navigate(HomeDestination.route) {
-                        popUpTo(LoginDestination.route) { inclusive = true }
-                        launchSingleTop = true
+                        popUpTo(LoginDestination.route) { // Eliminamos Login del backstack
+                            inclusive = true
+                        }
+                        launchSingleTop = true // Evita múltiples copias en el stack
                     }
                 }
             )
         }
+
 
         composable(RecoverDestination.route) {
             RecoverPasswordPage(
