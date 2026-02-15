@@ -7,21 +7,20 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Implementación real del repositorio de usuarios usando Room (UserDao).
  *
- * ✅ Responsabilidad:
- * - Actuar como capa intermedia entre ViewModels y la base de datos (DAO).
- * - Evitar que los ViewModels conozcan Room directamente.
+ * ✅ Reglas acordadas:
+ * - Login SOLO con email (único).
+ * - Email se normaliza (trim + lowercase).
+ * - El "username visual" NO se guarda: se deriva del email (antes del @) en la UI.
  *
- * ✅ Nota importante (proyecto real):
- * - Aquí podrías meter validaciones de negocio (p.ej. password mínima, username válido, etc.).
- * - En un proyecto real NO guardarías contraseñas en texto plano:
- *   se usaría hashing + salt (por ejemplo BCrypt).
+ * ⚠️ Nota (proyecto real):
+ * - No guardar contraseñas en texto plano (usar hashing + salt).
  */
 class UserRepositoryImpl(
     private val userDao: UserDao
 ) : UserRepository {
 
     /**
-     * Observa un usuario por id (útil para pantalla de perfil).
+     * Observa un usuario por id (útil para Profile).
      *
      * Flow permite que la UI se actualice automáticamente
      * si el usuario cambia en la base de datos.
@@ -30,77 +29,74 @@ class UserRepositoryImpl(
         userDao.observeById(userId)
 
     /**
-     * Registro de usuario:
-     * - Normaliza campos (trim en strings).
-     * - Crea el UserEntity inicial.
-     * - Devuelve el id autogenerado por Room.
+     * Registro:
+     * - Normaliza email (trim + lowercase).
+     * - Normaliza displayName (trim).
+     * - Crea UserEntity inicial.
+     * - Devuelve id autogenerado por Room.
+     *
+     * ✅ Email es único: si ya existe, Room lanzará excepción (constraint).
      */
     override suspend fun register(
-        username: String,
+        displayName: String,
+        email: String,
         password: String,
+        birthDate: Long,
         securityQuestion: String,
         securityAnswer: String
     ): Long {
+        val normalizedEmail = email.trim().lowercase()
+        val normalizedName = displayName.trim()
+
         val user = UserEntity(
-            username = username.trim(),
+            email = normalizedEmail,
             password = password,
+            displayName = normalizedName,
+            birthDate = birthDate,
             securityQuestion = securityQuestion.trim(),
             securityAnswer = securityAnswer.trim(),
-            displayName = username.trim(),
-            email = ""
+            photoUri = null
         )
 
-        // UserDao.insert devuelve el id autogenerado
         return userDao.insert(user)
     }
 
     /**
      * Login:
-     * - Busca el usuario por username.
+     * - Busca por email (normalizado).
      * - Compara la contraseña.
-     * - Si coincide, devuelve el id; si no, devuelve null.
-     *
-     * Nota (proyecto real):
-     * - Esto se haría con hash, no comparando texto plano.
+     * - Si coincide, devuelve id; si no, null.
      */
-    override suspend fun login(username: String, password: String): Long? {
-        val user = userDao.findByUsername(username.trim())
+    override suspend fun login(email: String, password: String): Long? {
+        val user = userDao.findByEmail(email.trim().lowercase())
         return if (user != null && user.password == password) user.id else null
     }
 
     /**
-     * Recupera la pregunta de seguridad asociada a un username.
-     *
-     * Uso típico:
-     * - Pantalla "Recuperar contraseña": primero se pide username,
-     *   luego se muestra la pregunta.
+     * Recuperación:
+     * - Obtiene la pregunta de seguridad asociada a un email.
      */
-    override suspend fun getSecurityQuestion(username: String): String? {
-        val user = userDao.findByUsername(username.trim())
+    override suspend fun getSecurityQuestion(email: String): String? {
+        val user = userDao.findByEmail(email.trim().lowercase())
         return user?.securityQuestion
     }
 
     /**
      * Recuperación / reset de contraseña:
-     * - Busca el usuario por username.
-     * - Verifica que la respuesta de seguridad coincide.
-     * - Si coincide, actualiza la contraseña y devuelve true.
-     * - Si falla, devuelve false sin modificar nada.
-     *
-     * Detalle:
-     * - Normalizamos respuestas (trim + lowercase) para evitar fallos por:
-     *   espacios accidentales o diferencias de mayúsculas/minúsculas.
+     * - Busca usuario por email.
+     * - Verifica respuesta de seguridad (trim + lowercase).
+     * - Si coincide, actualiza password y devuelve true.
+     * - Si falla, devuelve false sin modificar.
      */
     override suspend fun resetPassword(
-        username: String,
+        email: String,
         securityAnswer: String,
         newPassword: String
     ): Boolean {
-        val user = userDao.findByUsername(username.trim()) ?: return false
+        val user = userDao.findByEmail(email.trim().lowercase()) ?: return false
 
         val expectedAnswer = user.securityAnswer.trim().lowercase()
         val providedAnswer = securityAnswer.trim().lowercase()
-
         if (expectedAnswer != providedAnswer) return false
 
         userDao.update(user.copy(password = newPassword))
@@ -108,28 +104,28 @@ class UserRepositoryImpl(
     }
 
     /**
-     * Actualiza datos editables del perfil.
+     * Actualiza datos editables del perfil:
+     * - displayName (trim)
+     * - email (trim + lowercase) -> sigue siendo único
      *
-     * - Si el usuario no existe, no hace nada.
-     * - Normaliza los campos (trim) antes de guardarlos.
+     * ✅ Si cambias el email a uno ya existente, Room lanzará excepción (constraint).
      */
     override suspend fun updateProfile(userId: Long, displayName: String, email: String) {
         val current = userDao.getById(userId) ?: return
 
+        val normalizedEmail = email.trim().lowercase()
+        val normalizedName = displayName.trim()
+
         userDao.update(
             current.copy(
-                displayName = displayName.trim(),
-                email = email.trim()
+                displayName = normalizedName,
+                email = normalizedEmail
             )
         )
     }
 
     /**
-     * Guarda la foto de perfil como URI (String).
-     *
-     * Ejemplos:
-     * - "content://..."
-     * - null si se elimina la foto
+     * Guarda la foto de perfil como URI (String) o null.
      */
     override suspend fun updatePhoto(userId: Long, photoUri: String?) {
         val current = userDao.getById(userId) ?: return

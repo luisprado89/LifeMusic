@@ -1,6 +1,5 @@
 package com.luis.lifemusic.ui.register
 
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -9,17 +8,18 @@ import com.luis.lifemusic.page.RegisterPage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * RegisterRoute = contenedor que conecta ViewModel con la UI pura de RegisterPage.
+ * RegisterRoute = contenedor que conecta RegisterViewModel con RegisterPage (UI pura).
  *
- * ✅ Responsabilidades de esta Route:
+ * ✅ Responsabilidades:
  * - Obtener RegisterViewModel usando la Factory global.
- * - Observar RegisterUiState.
- * - Pasar estado y eventos a RegisterPage.
- * - Comunicar el éxito de registro al NavHost mediante callback.
+ * - Observar RegisterUiState como única fuente de verdad.
+ * - Conectar eventos de UI con funciones del ViewModel.
+ * - Notificar al NavHost cuando el registro es exitoso.
  *
- * ✅ Importante:
- * - Aquí NO hay lógica de navegación con NavController.
- * - La navegación real la decide AppNavHost (nivel superior).
+ * 🔐 Arquitectura:
+ * - No contiene lógica de negocio.
+ * - No navega directamente.
+ * - Solo delega navegación al nivel superior (AppNavHost).
  */
 @Composable
 fun RegisterRoute(
@@ -36,16 +36,30 @@ fun RegisterRoute(
     val uiState by viewModel.uiState.collectAsState()
 
     RegisterPage(
-        username = uiState.username,
+        // -------------------------
+        // Estado
+        // -------------------------
+        displayName = uiState.displayName,
+        email = uiState.email,
+        birthDate = uiState.birthDate,
         password = uiState.password,
         confirmPassword = uiState.confirmPassword,
         securityQuestion = uiState.securityQuestion,
         securityAnswer = uiState.securityAnswer,
-        onUsernameChange = viewModel::onUsernameChange,
+        isLoading = uiState.isLoading,
+        errorMessage = uiState.errorMessage,
+
+        // -------------------------
+        // Eventos
+        // -------------------------
+        onDisplayNameChange = viewModel::onDisplayNameChange,
+        onEmailChange = viewModel::onEmailChange,
+        onBirthDateChange = viewModel::onBirthDateChange,
         onPasswordChange = viewModel::onPasswordChange,
         onConfirmPasswordChange = viewModel::onConfirmPasswordChange,
         onSecurityQuestionChange = viewModel::onSecurityQuestionChange,
         onSecurityAnswerChange = viewModel::onSecurityAnswerChange,
+
         onRegisterClick = {
             /**
              * El ViewModel valida y registra.
@@ -54,9 +68,13 @@ fun RegisterRoute(
              * que AppNavHost navegue (sin acoplar la pantalla a rutas concretas).
              */
             viewModel.tryRegister { isSuccess ->
-                if (isSuccess) onRegisterSuccess()
+                if (isSuccess) {
+                    onRegisterSuccess()
+                }
             }
         },
+
         onBackClick = onBackClick
     )
 }
+

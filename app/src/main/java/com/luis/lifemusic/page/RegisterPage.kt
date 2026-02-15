@@ -1,16 +1,21 @@
 package com.luis.lifemusic.page
 
+import android.app.DatePickerDialog
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -18,6 +23,10 @@ import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /**
  * Destination de registro.
@@ -32,23 +41,36 @@ object RegisterDestination : NavigationDestination {
 /**
  * RegisterPage (UI pura).
  *
- * ✅ Importante:
- * - No guardamos estado con remember.
+ * ✅ Regla MVVM:
+ * - No guardamos estado con remember para datos de negocio.
  * - Todo el estado entra por parámetros y se actualiza con callbacks.
- * - El ViewModel (más adelante) validará:
- *   - si el correo/usuario ya existe en Room
- *   - si password == confirmPassword
- *   - y guardará la pregunta/respuesta para recuperación ficticia.
+ *
+ * ✅ Campos obligatorios:
+ * - Nombre completo (displayName)
+ * - Correo (email) -> será el login y es único en Room
+ * - Contraseña + confirmar (confirm solo UI)
+ * - Fecha de nacimiento (birthDate) obligatoria
+ * - Pregunta de seguridad + respuesta (para recuperación sin email real)
+ *
+ * 🗓️ Selector de fecha:
+ * - Por defecto usamos DatePickerDialog (Android).
+ *   (librería o custom) y devolver igualmente un Long (epoch millis).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterPage(
-    username: String,
+    displayName: String,
+    email: String,
+    birthDate: Long?,
     password: String,
     confirmPassword: String,
     securityQuestion: String,
     securityAnswer: String,
-    onUsernameChange: (String) -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onDisplayNameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onBirthDateChange: (Long?) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
     onSecurityQuestionChange: (String) -> Unit,
@@ -56,22 +78,30 @@ fun RegisterPage(
     onRegisterClick: () -> Unit = {},
     onBackClick: () -> Unit = {}
 ) {
-    // ✅ Regla simple para UX (sin persistencia aquí):
-    // activamos botón si hay datos y las contraseñas coinciden.
-    // (En MVVM esto también se controlará desde el ViewModel.)
+    val context = LocalContext.current
+
+    // Formateo simple para mostrar la fecha elegida
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val birthDateText = birthDate?.let { dateFormatter.format(Date(it)) } ?: ""
+
+    // ✅ Regla simple para UX:
+    // activamos botón si hay datos obligatorios + passwords coinciden + fecha marcada.
     val canRegister =
-        username.isNotBlank() &&
+        displayName.isNotBlank() &&
+                email.isNotBlank() &&
+                birthDate != null &&
                 password.isNotBlank() &&
                 confirmPassword.isNotBlank() &&
                 password == confirmPassword &&
                 securityQuestion.isNotBlank() &&
-                securityAnswer.isNotBlank()
+                securityAnswer.isNotBlank() &&
+                !isLoading
 
     MainScaffold(
-        // ✅ Título consistente con la navegación (sin hardcode).
         title = RegisterDestination.title,
         onBackClick = onBackClick
     ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -85,14 +115,85 @@ fun RegisterPage(
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // Error (si lo hay)
+            if (!errorMessage.isNullOrBlank()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            // -------------------------
+            // Datos obligatorios
+            // -------------------------
+
             OutlinedTextField(
-                value = username,
-                onValueChange = onUsernameChange,
-                label = { Text("Usuario o correo (ficticio)") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                value = displayName,
+                onValueChange = onDisplayNameChange,
+                label = { Text("Nombre completo") },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                 singleLine = true,
+                enabled = !isLoading,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = onEmailChange,
+                label = { Text("Correo electrónico") },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                singleLine = true,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Fecha nacimiento (campo readonly + abre DatePicker)
+            OutlinedTextField(
+                value = birthDateText,
+                onValueChange = {},
+                label = { Text("Fecha de nacimiento") },
+                leadingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) },
+                readOnly = true,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    TextButton(
+                        enabled = !isLoading,
+                        onClick = {
+                            val cal = Calendar.getInstance()
+                            if (birthDate != null) cal.timeInMillis = birthDate
+
+                            val year = cal.get(Calendar.YEAR)
+                            val month = cal.get(Calendar.MONTH)
+                            val day = cal.get(Calendar.DAY_OF_MONTH)
+
+                            DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val picked = Calendar.getInstance().apply {
+                                        set(Calendar.YEAR, y)
+                                        set(Calendar.MONTH, m)
+                                        set(Calendar.DAY_OF_MONTH, d)
+                                        set(Calendar.HOUR_OF_DAY, 0)
+                                        set(Calendar.MINUTE, 0)
+                                        set(Calendar.SECOND, 0)
+                                        set(Calendar.MILLISECOND, 0)
+                                    }
+                                    onBirthDateChange(picked.timeInMillis)
+                                },
+                                year,
+                                month,
+                                day
+                            ).show()
+                        }
+                    ) {
+                        Text("Elegir")
+                    }
+                }
             )
 
             OutlinedTextField(
@@ -101,6 +202,7 @@ fun RegisterPage(
                 label = { Text("Contraseña") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 singleLine = true,
+                enabled = !isLoading,
                 visualTransformation = PasswordVisualTransformation(),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -112,6 +214,7 @@ fun RegisterPage(
                 label = { Text("Confirmar contraseña") },
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 singleLine = true,
+                enabled = !isLoading,
                 visualTransformation = PasswordVisualTransformation(),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -130,6 +233,7 @@ fun RegisterPage(
                 onValueChange = onSecurityQuestionChange,
                 label = { Text("Pregunta de seguridad") },
                 leadingIcon = { Icon(Icons.Default.QuestionMark, contentDescription = null) },
+                enabled = !isLoading,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -139,6 +243,7 @@ fun RegisterPage(
                 onValueChange = onSecurityAnswerChange,
                 label = { Text("Respuesta") },
                 leadingIcon = { Icon(Icons.Default.Security, contentDescription = null) },
+                enabled = !isLoading,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -147,13 +252,22 @@ fun RegisterPage(
 
             Button(
                 onClick = onRegisterClick,
-                enabled = canRegister, // ✅ evita “registro vacío” en UI
+                enabled = canRegister,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Registrarme", fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Creando cuenta…", fontWeight = FontWeight.Bold)
+                } else {
+                    Text("Registrarme", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -164,12 +278,18 @@ fun RegisterPage(
 fun RegisterPagePreviewLight() {
     LifeMusicTheme {
         RegisterPage(
-            username = "",
+            displayName = "",
+            email = "",
+            birthDate = null,
             password = "",
             confirmPassword = "",
             securityQuestion = "¿Cómo se llamaba tu primera mascota?",
             securityAnswer = "",
-            onUsernameChange = {},
+            isLoading = false,
+            errorMessage = null,
+            onDisplayNameChange = {},
+            onEmailChange = {},
+            onBirthDateChange = {},
             onPasswordChange = {},
             onConfirmPasswordChange = {},
             onSecurityQuestionChange = {},
@@ -183,12 +303,18 @@ fun RegisterPagePreviewLight() {
 fun RegisterPagePreviewDark() {
     LifeMusicTheme {
         RegisterPage(
-            username = "luis@lifemusic.com",
-            password = "1234",
-            confirmPassword = "1234",
+            displayName = "Luis Prado",
+            email = "luisdpc@gmail.com",
+            birthDate = System.currentTimeMillis(),
+            password = "123456",
+            confirmPassword = "123456",
             securityQuestion = "¿En qué ciudad naciste?",
             securityAnswer = "Vigo",
-            onUsernameChange = {},
+            isLoading = false,
+            errorMessage = null,
+            onDisplayNameChange = {},
+            onEmailChange = {},
+            onBirthDateChange = {},
             onPasswordChange = {},
             onConfirmPasswordChange = {},
             onSecurityQuestionChange = {},
