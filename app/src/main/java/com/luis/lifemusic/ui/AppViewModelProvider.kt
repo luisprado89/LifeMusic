@@ -5,23 +5,27 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.luis.lifemusic.LifeMusicApplication
+import com.luis.lifemusic.ui.home.HomeViewModel
 import com.luis.lifemusic.ui.login.LoginViewModel
 import com.luis.lifemusic.ui.recover.RecoverViewModel
 import com.luis.lifemusic.ui.register.RegisterViewModel
 
 /**
  * Acceso cómodo a LifeMusicApplication desde cualquier ViewModelFactory.
+ *
+ * Permite obtener appContainer (repositorios) sin pasar dependencias manualmente
+ * por parámetros desde Compose root o desde NavHost.
  */
 fun CreationExtras.lifeMusicApp(): LifeMusicApplication =
     (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as LifeMusicApplication)
 
 /**
- * Factory global para ViewModels (como en DiscosFavoritos2).
+ * Factory global para ViewModels.
  *
  * ✅ Ventajas:
- * - Centralizas dependencias (repositorios) aquí.
- * - Las Screens solo hacen: viewModel(factory = AppViewModelProvider.Factory)
- * - AppNavHost no se llena de factories.
+ * - Centraliza inyección de dependencias aquí (repositorios).
+ * - Las Routes solo hacen: viewModel(factory = AppViewModelProvider.Factory)
+ * - AppNavHost y Pages se mantienen limpios (sin AppContainer).
  */
 object AppViewModelProvider {
     val Factory = viewModelFactory {
@@ -29,6 +33,7 @@ object AppViewModelProvider {
         // ------------------------------------
         // AUTH
         // ------------------------------------
+
         initializer {
             LoginViewModel(
                 userRepository = lifeMusicApp().appContainer.userRepository,
@@ -44,19 +49,28 @@ object AppViewModelProvider {
         }
 
         initializer {
-            // RecoverPasswordViewModel(...)
+            /**
+             * RecoverViewModel:
+             * - Gestiona recuperación de contraseña (pregunta seguridad + reset).
+             * - Depende solo de UserRepository (Room).
+             */
             RecoverViewModel(
                 userRepository = lifeMusicApp().appContainer.userRepository
             )
-
         }
 
         // ------------------------------------
         // MAIN
         // ------------------------------------
+
         initializer {
-            // HomeViewModel(...)
-            TODO("Crear HomeViewModel")
+            /**
+             * HomeViewModel:
+             * - Controla el estado de Home y el guard de sesión (DataStore).
+             */
+            HomeViewModel(
+                sessionRepository = lifeMusicApp().appContainer.sessionRepository
+            )
         }
 
         initializer {
