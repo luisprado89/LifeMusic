@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.luis.lifemusic.LifeMusicApplication
 import com.luis.lifemusic.ui.home.HomeViewModel
+import com.luis.lifemusic.ui.list.ListViewModel
 import com.luis.lifemusic.ui.login.LoginViewModel
 import com.luis.lifemusic.ui.recover.RecoverViewModel
 import com.luis.lifemusic.ui.register.RegisterViewModel
@@ -74,8 +75,14 @@ object AppViewModelProvider {
         }
 
         initializer {
-            // ListViewModel(...)
-            TODO("Crear ListViewModel")
+            /**
+             * ListViewModel:
+             * - Controla el estado de la lista de canciones.
+             * - Incluye guard de sesión (DataStore) para proteger la pantalla.
+             */
+            ListViewModel(
+                sessionRepository = lifeMusicApp().appContainer.sessionRepository
+            )
         }
 
         initializer {

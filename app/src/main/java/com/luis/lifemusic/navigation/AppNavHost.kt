@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 import com.luis.lifemusic.ui.home.HomeRoute
+import com.luis.lifemusic.ui.list.ListRoute
 import com.luis.lifemusic.ui.login.LoginRoute
 import com.luis.lifemusic.ui.recover.RecoverRoute
 import com.luis.lifemusic.ui.register.RegisterRoute
@@ -21,9 +22,9 @@ import com.luis.lifemusic.ui.register.RegisterRoute
  * - Navegamos por IDs estables (songId) y NO por títulos.
  *
  * ✅ Estado actual:
- * - Login / Register / Recover usan Route pattern (ViewModel + UiState).
- * - Home también usa Route pattern e incluye guard de sesión.
- * - List/Detail/Profile siguen usando Pages (de momento).
+ * - Auth (Login/Register/Recover) usa Route pattern (ViewModel + UiState).
+ * - Main (Home/List) también usa Route pattern con guard de sesión.
+ * - Detail/Profile siguen siendo Pages (de momento).
  *
  * 🔜 Siguiente paso:
  * - Terminar ViewModels + repos (Room/DataStore/Retrofit)
@@ -122,13 +123,25 @@ fun AppNavHost(
         }
 
         composable(ListDestination.route) {
-            ListPage(
+            /**
+             * ListRoute:
+             * - Conecta ListPage (UI pura) con ListViewModel.
+             * - Incluye guard de sesión: si se pierde la sesión, vuelve a Login.
+             */
+            ListRoute(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToDetail = { songId ->
                     navController.navigate("${DetailDestination.route}/$songId")
+                },
+                onSessionExpired = {
+                    navController.navigate(LoginDestination.route) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             )
         }
+
 
         // DETAIL con argumento
         composable(
