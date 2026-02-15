@@ -1,7 +1,6 @@
 package com.luis.lifemusic
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.luis.lifemusic.navigation.AppNavHost
@@ -11,37 +10,27 @@ import com.luis.lifemusic.navigation.AppNavHost
  *
  * ✅ Responsabilidad:
  * - Crear el NavController
- * - Obtener el AppContainer desde LifeMusicApplication
- * - Pasarlo al AppNavHost
+ * - Delegar navegación al AppNavHost
  *
  * ✅ Regla:
  * - Aquí NO se crea Room, ni DataStore, ni Retrofit.
- * - Eso vive en AppContainer dentro de LifeMusicApplication.
+ * - Aquí tampoco se pasa appContainer manualmente.
+ *
+ * ✅ ¿Por qué está así?
+ * - Las dependencias (Room/DataStore/Retrofit) ya se resuelven desde
+ *   LifeMusicApplication -> AppContainer -> AppViewModelProvider.
+ * - De este modo, la capa Compose raíz queda centrada en navegación y
+ *   evitamos duplicar responsabilidades o acoplar de más el App root.
  */
 @Composable
 fun LifeMusicApp(
     navController: NavHostController = rememberNavController()
 ) {
     /**
-     * Recuperamos el Application real.
+     * AppNavHost define rutas y flujo de pantallas.
      *
-     * - LocalContext.current -> context actual (Activity)
-     * - applicationContext -> contexto de aplicación (seguro y global)
-     * - Lo casteamos a LifeMusicApplication para acceder a appContainer
+     * Los ViewModels obtienen sus repositorios usando la Factory global,
+     * por eso aquí no hace falta recuperar LocalContext ni castear Application.
      */
-    val lifeMusicApp = LocalContext.current.applicationContext as LifeMusicApplication
-
-    /**
-     * AppContainer ya está creado una sola vez en LifeMusicApplication.onCreate().
-     * No hace falta remember aquí.
-     */
-    val appContainer = lifeMusicApp.appContainer
-
-    /**
-     * AppNavHost recibe el contenedor con Room/DataStore/Retrofit (cuando toque).
-     */
-    AppNavHost(
-        navController = navController,
-        appContainer = appContainer
-    )
+    AppNavHost(navController = navController)
 }

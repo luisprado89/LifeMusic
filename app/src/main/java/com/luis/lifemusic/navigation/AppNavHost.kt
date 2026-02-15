@@ -7,7 +7,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.luis.lifemusic.data.AppContainer
 import com.luis.lifemusic.data.sampleSongs
 import com.luis.lifemusic.page.*
 import com.luis.lifemusic.ui.login.LoginRoute
@@ -20,12 +19,12 @@ import com.luis.lifemusic.ui.login.LoginRoute
  *
  * ✅ Estado:
  * - De momento seguimos con sampleSongs para pintar UI.
- * - Siguiente paso: ViewModels + repos (Room/DataStore/Retrofit) usando AppContainer.
+ * - Siguiente paso: terminar ViewModels + repos (Room/DataStore/Retrofit)
+ *   manteniendo la inyección desde AppViewModelProvider.
  */
 @Composable
 fun AppNavHost(
     navController: NavHostController,
-    appContainer: AppContainer,
     modifier: Modifier = Modifier
 ) {
     NavHost(
