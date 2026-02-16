@@ -1,5 +1,6 @@
 package com.luis.lifemusic.ui.login
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.luis.lifemusic.data.repository.SessionRepository
@@ -10,17 +11,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel de Login.
+ * LoginViewModel
  *
- * Responsabilidades:
- * - Mantener LoginUiState con StateFlow.
- * - Validar campos.
- * - Ejecutar login en repositorio.
- * - Persistir sesión en DataStore (sessionRepository).
+ * ✅ Objetivo:
+ * - Gestionar el estado de Login (LoginUiState) con StateFlow.
+ * - Validar inputs antes de consultar Room.
+ * - Ejecutar login SOLO por email usando UserRepository.
+ * - Persistir sesión en DataStore (SessionRepository) guardando el userId.
  *
- * Importante:
- * - No navega directamente.
- * - Informa resultado por callback para que la pantalla/NavHost decidan navegación.
+ * ✅ Reglas del proyecto:
+ * - Login SOLO con email (email único en Room).
+ * - No existe "username" como credencial.
+ * - No navega: devuelve el resultado por callback y la navegación la decide AppNavHost.
  */
 class LoginViewModel(
     private val userRepository: UserRepository,
@@ -30,8 +32,8 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState
 
-    fun onUsernameChange(value: String) {
-        _uiState.update { it.copy(username = value, errorMessage = null) }
+    fun onEmailChange(value: String) {
+        _uiState.update { it.copy(email = value, errorMessage = null) }
     }
 
     fun onPasswordChange(value: String) {
@@ -41,8 +43,14 @@ class LoginViewModel(
     fun tryLogin(onResult: (Boolean) -> Unit) {
         val current = _uiState.value
 
-        if (current.username.isBlank() || current.password.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Rellena usuario y contraseña") }
+        if (current.email.isBlank() || current.password.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Rellena correo y contraseña") }
+            onResult(false)
+            return
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(current.email.trim()).matches()) {
+            _uiState.update { it.copy(errorMessage = "Introduce un correo válido") }
             onResult(false)
             return
         }
@@ -50,7 +58,10 @@ class LoginViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            val userId = userRepository.login(current.username, current.password)
+            val userId = userRepository.login(
+                email = current.email.trim().lowercase(),
+                password = current.password
+            )
 
             if (userId != null) {
                 sessionRepository.setLoggedInUserId(userId)

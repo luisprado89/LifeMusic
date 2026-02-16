@@ -3,12 +3,14 @@ package com.luis.lifemusic.ui.login
 /**
  * Estado inmutable de la pantalla Login.
  *
- * - username/password: datos de entrada.
- * - isLoading: controla bloqueo visual y spinner.
- * - errorMessage: mensaje user-friendly si falla validación/login.
+ * Reglas del proyecto:
+ * - Login SOLO con email (email único en Room).
+ * - No existe "username" como credencial.
+ * - isLoading controla spinner/bloqueo UI.
+ * - errorMessage muestra mensajes de validación o error.
  */
 data class LoginUiState(
-    val username: String = "",
+    val email: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null

@@ -42,11 +42,11 @@ object LoginDestination : NavigationDestination {
  */
 @Composable
 fun LoginPage(
-    username: String,
+    email: String,
     password: String,
     isLoading: Boolean,
     errorMessage: String?,
-    onUsernameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit = {},
     onGoToRegister: () -> Unit = {},
@@ -63,7 +63,7 @@ fun LoginPage(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo de app
+
             Image(
                 painter = painterResource(id = R.drawable.logo_lm),
                 contentDescription = "Logo LifeMusic",
@@ -75,14 +75,12 @@ fun LoginPage(
             Text(
                 text = "LifeMusic",
                 fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                fontWeight = FontWeight.Bold
             )
 
             Text(
                 text = "Tu música para cada momento de la vida",
                 fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -94,14 +92,14 @@ fun LoginPage(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Campo usuario/email
+            // Campo correo
             OutlinedTextField(
-                value = username,
-                onValueChange = onUsernameChange,
-                label = { Text("Nombre de usuario o correo electrónico") },
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Usuario") },
+                value = email,
+                onValueChange = onEmailChange,
+                label = { Text("Correo electrónico") },
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                 singleLine = true,
-                enabled = !isLoading, // Bloqueamos edición durante login
+                enabled = !isLoading,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,38 +111,30 @@ fun LoginPage(
                 value = password,
                 onValueChange = onPasswordChange,
                 label = { Text("Contraseña") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = "Contraseña") },
+                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
-                enabled = !isLoading, // Bloqueamos edición durante login
+                enabled = !isLoading,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
             )
 
-            // Mensaje de error del ViewModel (si existe)
             if (!errorMessage.isNullOrBlank()) {
                 Text(
                     text = errorMessage,
                     color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-            } else {
-                Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // Botón login + loading
             Button(
                 onClick = onLoginClick,
-                enabled = !isLoading, // Evita doble click mientras carga
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(10.dp)
+                    .height(50.dp)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -152,51 +142,45 @@ fun LoginPage(
                         modifier = Modifier.size(18.dp)
                     )
                 } else {
-                    Text(
-                        text = "Iniciar sesión",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Iniciar sesión")
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "¿Olvidaste tu contraseña?",
                 color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
                 modifier = Modifier
-                    .padding(top = 16.dp)
                     .clickable(enabled = !isLoading) { onGoToRecover() }
+                    .padding(bottom = 12.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "¿No tienes cuenta? ")
+            Row {
+                Text("¿No tienes cuenta? ")
                 Text(
                     text = "Regístrate",
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable(enabled = !isLoading) { onGoToRegister() }
+                    modifier = Modifier.clickable(enabled = !isLoading) {
+                        onGoToRegister()
+                    }
                 )
             }
         }
     }
 }
 
-/**
- * Preview solo visual (datos fake, sin ViewModel real).
- */
-@Preview(showBackground = true, name = "LoginPage - Light Mode")
+@Preview(showBackground = true)
 @Composable
 fun LoginPagePreviewLight() {
     LifeMusicTheme {
         LoginPage(
-            username = "",
+            email = "",
             password = "",
             isLoading = false,
             errorMessage = null,
-            onUsernameChange = {},
+            onEmailChange = {},
             onPasswordChange = {}
         )
     }
@@ -204,18 +188,17 @@ fun LoginPagePreviewLight() {
 
 @Preview(
     showBackground = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "LoginPage - Dark Mode"
+    uiMode = Configuration.UI_MODE_NIGHT_YES
 )
 @Composable
 fun LoginPagePreviewDark() {
     LifeMusicTheme {
         LoginPage(
-            username = "luis@lifemusic.com",
-            password = "1234",
+            email = "luis@lifemusic.com",
+            password = "123456",
             isLoading = false,
             errorMessage = "Credenciales incorrectas",
-            onUsernameChange = {},
+            onEmailChange = {},
             onPasswordChange = {}
         )
     }
