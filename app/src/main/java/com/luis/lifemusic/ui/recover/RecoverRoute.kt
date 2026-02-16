@@ -8,37 +8,61 @@ import com.luis.lifemusic.page.RecoverPasswordPage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * RecoverRoute = puente entre RecoverViewModel y RecoverPasswordPage (UI pura).
+ * RecoverRoute
  *
- * ✅ Hace de capa contenedora:
- * - Obtiene ViewModel con la Factory global.
- * - Observa uiState.
- * - Conecta acciones de UI con funciones del ViewModel.
+ * 🔗 Puente entre RecoverViewModel y RecoverPasswordPage (UI pura).
+ *
+ * ✅ Responsabilidades:
+ * - Obtener RecoverViewModel usando la Factory global.
+ * - Observar RecoverUiState como única fuente de verdad.
+ * - Conectar eventos de la UI con funciones del ViewModel.
+ *
+ * 🧠 Arquitectura:
+ * - No contiene lógica de negocio.
+ * - No navega directamente.
+ * - Solo actúa como capa intermedia entre UI y ViewModel.
  */
 @Composable
 fun RecoverRoute(
     onBackClick: () -> Unit,
     viewModel: RecoverViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
+    // Observamos el estado expuesto por el ViewModel
     val uiState by viewModel.uiState.collectAsState()
 
     RecoverPasswordPage(
-        username = uiState.username,
+        // -------------------------
+        // Estado
+        // -------------------------
+        email = uiState.email,
         securityQuestion = uiState.securityQuestion,
         securityAnswer = uiState.securityAnswer,
         newPassword = uiState.newPassword,
         isQuestionLoaded = uiState.isQuestionLoaded,
         isLoading = uiState.isLoading,
-        onUsernameChange = viewModel::onUsernameChange,
-        onSecurityAnswerChange = viewModel::onSecurityAnswerChange,
-        onNewPasswordChange = viewModel::onNewPasswordChange,
-        onSearchUserClick = viewModel::searchUser,
-        onResetPasswordClick = {
-            // No navegamos automáticamente: mostramos feedback en la misma pantalla.
-            viewModel.resetPassword(onResult = {})
-        },
         errorMessage = uiState.errorMessage,
         successMessage = uiState.successMessage,
+
+        // -------------------------
+        // Eventos
+        // -------------------------
+        onEmailChange = viewModel::onEmailChange,
+        onSecurityAnswerChange = viewModel::onSecurityAnswerChange,
+        onNewPasswordChange = viewModel::onNewPasswordChange,
+
+        onSearchUserClick = viewModel::searchUser,
+
+        onResetPasswordClick = {
+            /**
+             * No navegamos automáticamente.
+             * Mostramos feedback en la misma pantalla.
+             *
+             * Si más adelante quieres que tras éxito vuelva a Login,
+             * aquí sería el lugar correcto para hacerlo mediante callback.
+             */
+            viewModel.resetPassword(onResult = {})
+        },
+
         onBackClick = onBackClick
     )
 }

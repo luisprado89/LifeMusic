@@ -1,19 +1,37 @@
 package com.luis.lifemusic.ui.recover
 
 /**
- * Estado inmutable de la pantalla de recuperación.
+ * Estado inmutable de la pantalla Recover.
  *
- * ✅ Incluye:
- * - Datos que escribe el usuario.
- * - Datos cargados desde repositorio (pregunta de seguridad).
- * - Estado de carga y mensajes de error/éxito para la UI.
+ * ✅ Flujo en 2 pasos:
+ *
+ * Paso 1:
+ * - El usuario introduce su email.
+ * - Se busca la cuenta y se carga la pregunta de seguridad.
+ *
+ * Paso 2:
+ * - Se muestra la pregunta.
+ * - El usuario introduce la respuesta + nueva contraseña.
+ *
+ * 🔐 Reglas del proyecto:
+ * - Recuperación SOLO por email (igual que login).
+ * - isQuestionLoaded controla si estamos en el paso 1 o paso 2.
+ * - errorMessage y successMessage son feedback visual para la UI.
  */
 data class RecoverUiState(
-    val username: String = "",
+
+    // Paso 1: Identificación por email
+    val email: String = "",
+
+    // Paso 2: Recuperación
     val securityQuestion: String = "",
     val securityAnswer: String = "",
     val newPassword: String = "",
+
+    // Control de flujo
     val isQuestionLoaded: Boolean = false,
+
+    // Estado UI
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null

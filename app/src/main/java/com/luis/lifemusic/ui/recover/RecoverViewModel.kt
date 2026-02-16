@@ -1,5 +1,6 @@
 package com.luis.lifemusic.ui.recover
 
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.luis.lifemusic.data.repository.UserRepository
@@ -9,16 +10,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel de Recover.
+ * RecoverViewModel
  *
  * ✅ Responsabilidades:
  * - Gestionar el RecoverUiState.
- * - Buscar cuenta y cargar pregunta de seguridad.
- * - Validar respuesta + actualizar contraseña vía UserRepository.
+ * - Paso 1: buscar cuenta por email y cargar pregunta de seguridad.
+ * - Paso 2: validar respuesta + actualizar contraseña vía UserRepository.
  *
- * ✅ Regla:
- * - No navega directamente.
- * - Devuelve resultado por callback para que la Route/NavHost decidan navegación.
+ * ✅ Reglas del proyecto:
+ * - Recuperación SOLO por email (mismo identificador que login).
+ * - No navega directamente: devuelve resultado por callback.
  */
 class RecoverViewModel(
     private val userRepository: UserRepository
@@ -27,13 +28,17 @@ class RecoverViewModel(
     private val _uiState = MutableStateFlow(RecoverUiState())
     val uiState: StateFlow<RecoverUiState> = _uiState
 
-    fun onUsernameChange(value: String) {
+    // -----------------------------
+    // Eventos UI
+    // -----------------------------
+
+    fun onEmailChange(value: String) {
         _uiState.update {
             it.copy(
-                username = value,
+                email = value,
                 errorMessage = null,
                 successMessage = null,
-                // Si cambia usuario, reiniciamos el paso 2.
+                // Si cambia el email reiniciamos el paso 2.
                 isQuestionLoaded = false,
                 securityQuestion = "",
                 securityAnswer = "",
@@ -50,24 +55,35 @@ class RecoverViewModel(
         _uiState.update { it.copy(newPassword = value, errorMessage = null, successMessage = null) }
     }
 
+    // -----------------------------
+    // Paso 1: Buscar cuenta
+    // -----------------------------
+
     fun searchUser() {
-        val username = _uiState.value.username.trim()
-        if (username.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Introduce un usuario", successMessage = null) }
+        val email = _uiState.value.email.trim()
+
+        if (email.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Introduce un correo", successMessage = null) }
+            return
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _uiState.update { it.copy(errorMessage = "Introduce un correo válido", successMessage = null) }
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
 
-            val question = userRepository.getSecurityQuestion(username)
+            val question = userRepository.getSecurityQuestion(email)
+
             if (question.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isQuestionLoaded = false,
                         securityQuestion = "",
-                        errorMessage = "No existe una cuenta con ese usuario"
+                        errorMessage = "No existe una cuenta con ese correo"
                     )
                 }
             } else {
@@ -82,6 +98,10 @@ class RecoverViewModel(
             }
         }
     }
+
+    // -----------------------------
+    // Paso 2: Reset de contraseña
+    // -----------------------------
 
     fun resetPassword(onResult: (Boolean) -> Unit) {
         val state = _uiState.value
@@ -98,11 +118,17 @@ class RecoverViewModel(
             return
         }
 
+        if (state.newPassword.length < 6) {
+            _uiState.update { it.copy(errorMessage = "La nueva contraseña debe tener al menos 6 caracteres") }
+            onResult(false)
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
 
             val ok = userRepository.resetPassword(
-                username = state.username,
+                email = state.email.trim().lowercase(),
                 securityAnswer = state.securityAnswer,
                 newPassword = state.newPassword
             )
