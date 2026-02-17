@@ -1,5 +1,7 @@
 package com.luis.lifemusic.ui.profile
 
+import android.database.sqlite.SQLiteConstraintException
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.luis.lifemusic.data.repository.SessionRepository
@@ -20,6 +22,12 @@ import kotlinx.coroutines.launch
  * - Gestionar el modo edición (isEditing) y los cambios de name/email.
  * - Guardar cambios en Room usando userRepository.updateProfile.
  * - Logout limpiando la sesión (sessionRepository.clearSession).
+ *
+ * ✅ Reglas de la app:
+ * - Login SOLO con email.
+ * - Email es único en BD (índice UNIQUE).
+ * - displayName es el nombre completo editable.
+ * - El "username visual" se deriva del email en la UI (substringBefore("@")).
  *
  * ✅ Regla de arquitectura:
  * - El ViewModel NO navega.
@@ -105,6 +113,7 @@ class ProfileViewModel(
                     it.copy(
                         name = user.displayName,
                         email = user.email,
+                        birthDate = user.birthDate,
                         verified = user.email.contains("@"),
                         isLoading = false,
                         errorMessage = null
@@ -143,8 +152,10 @@ class ProfileViewModel(
     /**
      * Guarda cambios del perfil (displayName/email) en Room.
      *
-     * Validación mínima:
+     * Validaciones:
      * - El nombre no puede estar vacío.
+     * - El email debe tener formato válido.
+     * - Si el email ya existe (UNIQUE), se captura excepción.
      */
     fun onSaveChanges() {
         val userId = currentUserId ?: return
@@ -155,21 +166,43 @@ class ProfileViewModel(
             return
         }
 
+        if (!Patterns.EMAIL_ADDRESS.matcher(state.email.trim()).matches()) {
+            _uiState.update { it.copy(errorMessage = "Introduce un correo válido") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            userRepository.updateProfile(
-                userId = userId,
-                displayName = state.name,
-                email = state.email
-            )
-
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isEditing = false,
-                    verified = state.email.contains("@")
+            try {
+                userRepository.updateProfile(
+                    userId = userId,
+                    displayName = state.name,
+                    email = state.email
                 )
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isEditing = false,
+                        verified = state.email.contains("@")
+                    )
+                }
+
+            } catch (_: SQLiteConstraintException) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "Ese correo ya existe"
+                    )
+                }
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "No se pudo guardar el perfil"
+                    )
+                }
             }
         }
     }

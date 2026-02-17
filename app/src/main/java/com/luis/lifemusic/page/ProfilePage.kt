@@ -25,14 +25,16 @@ import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Destination de la pantalla de Perfil.
  *
- * ✅ Por qué existe:
- * - Centraliza "route" y "title" para navegación.
- * - Evita strings sueltos repartidos por el proyecto.
- * - AppNavHost usa ProfileDestination.route para navegar a esta pantalla.
+ * ✅ Centraliza route y title.
+ * - Evita strings sueltos.
+ * - Usado por AppNavHost.
  */
 object ProfileDestination : NavigationDestination {
     override val route = "profile"
@@ -40,26 +42,32 @@ object ProfileDestination : NavigationDestination {
 }
 
 /**
+ * Extensión para formatear birthDate (epoch millis).
+ */
+private fun Long.toBirthDateText(): String {
+    if (this <= 0L) return "Sin definir"
+    return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        .format(Date(this))
+}
+
+/**
  * ProfilePage (UI pura).
  *
  * ✅ Regla MVVM:
- * - La pantalla NO consulta Room, NO toca DataStore y NO tiene lógica de negocio.
- * - Todo el estado entra por parámetros (ProfileUiState).
- * - Todas las acciones salen por callbacks (eventos hacia el ViewModel).
+ * - NO consulta Room.
+ * - NO toca DataStore.
+ * - NO navega.
+ * - Todo el estado entra por parámetros.
+ * - Todas las acciones salen por callbacks.
  *
- * ✅ Estados visuales:
- * - isLoading: muestra indicador de progreso.
- * - errorMessage: muestra feedback de error.
- *
- * Nota:
- * - El modo edición (isEditing) viene controlado por el ViewModel.
+ * username visual = email.substringBefore("@")
  */
 @Composable
 fun ProfilePage(
     name: String,
     email: String,
+    birthDate: Long,
     verified: Boolean,
-    memberSince: String,
     isEditing: Boolean,
     isLoading: Boolean,
     errorMessage: String?,
@@ -72,12 +80,10 @@ fun ProfilePage(
     onLogoutClick: () -> Unit = {}
 ) {
     MainScaffold(
-        // Usamos el title centralizado en el Destination para consistencia.
         title = ProfileDestination.title,
         onBackClick = onBackClick
     ) { padding ->
 
-        // Estado de carga: mostramos progreso centrado.
         if (isLoading) {
             Box(
                 modifier = Modifier
@@ -90,6 +96,8 @@ fun ProfilePage(
             return@MainScaffold
         }
 
+        val usernameVisual = email.substringBefore("@").ifBlank { "usuario" }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -99,7 +107,7 @@ fun ProfilePage(
             verticalArrangement = Arrangement.Top
         ) {
 
-            // Avatar circular con inicial del nombre.
+            // Avatar circular
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -108,7 +116,7 @@ fun ProfilePage(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = name.firstOrNull()?.uppercase() ?: "L",
+                    text = name.firstOrNull()?.uppercase() ?: "U",
                     fontWeight = FontWeight.Bold,
                     fontSize = 48.sp,
                     color = Color.Black.copy(alpha = 0.6f)
@@ -118,15 +126,15 @@ fun ProfilePage(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(text = name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+
             Text(
-                text = email,
+                text = usernameVisual,
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Feedback de error (si existe).
             if (!errorMessage.isNullOrBlank()) {
                 Text(
                     text = errorMessage,
@@ -140,20 +148,27 @@ fun ProfilePage(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (!isEditing) {
-                // ===========================
-                // MODO VISUALIZACIÓN
-                // ===========================
+
+                // ===== MODO VISUALIZACIÓN =====
+
                 ProfileInfoItem(Icons.Default.Person, "Nombre completo", name)
                 Spacer(modifier = Modifier.height(12.dp))
+
                 ProfileInfoItem(Icons.Default.Email, "Correo electrónico", email)
                 Spacer(modifier = Modifier.height(12.dp))
+
+                ProfileInfoItem(
+                    Icons.Default.CalendarMonth,
+                    "Fecha de nacimiento",
+                    birthDate.toBirthDateText()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
                 ProfileInfoItem(
                     Icons.Default.MarkEmailRead,
                     "Correo verificado",
                     if (verified) "Sí" else "No"
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                ProfileInfoItem(Icons.Default.CalendarMonth, "Miembro desde", memberSince)
 
                 Spacer(modifier = Modifier.height(40.dp))
 
@@ -181,14 +196,16 @@ fun ProfilePage(
                 }
 
             } else {
-                // ===========================
-                // MODO EDICIÓN
-                // ===========================
+
+                // ===== MODO EDICIÓN =====
+
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
                     label = { Text("Nombre completo") },
-                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Person, contentDescription = null)
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -198,19 +215,27 @@ fun ProfilePage(
                     value = email,
                     onValueChange = onEmailChange,
                     label = { Text("Correo electrónico") },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Email, contentDescription = null)
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 ProfileInfoItem(
+                    Icons.Default.CalendarMonth,
+                    "Fecha de nacimiento",
+                    birthDate.toBirthDateText()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                ProfileInfoItem(
                     Icons.Default.MarkEmailRead,
                     "Correo verificado",
                     if (verified) "Sí" else "No"
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                ProfileInfoItem(Icons.Default.CalendarMonth, "Miembro desde", memberSince)
 
                 Spacer(modifier = Modifier.height(40.dp))
 
@@ -241,10 +266,14 @@ fun ProfilePage(
 }
 
 /**
- * Item reutilizable para mostrar información del perfil.
+ * Item reutilizable del perfil.
  */
 @Composable
-fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
+fun ProfileInfoItem(
+    icon: ImageVector,
+    label: String,
+    value: String
+) {
     Surface(
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
         shape = RoundedCornerShape(12.dp),
@@ -254,25 +283,37 @@ fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(12.dp)
         ) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(value, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = value,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
 }
 
-@Preview(showBackground = true, name = "ProfilePage - Light Mode")
+@Preview(showBackground = true, name = "Profile - Light")
 @Composable
-fun ProfilePagePreviewLight() {
+fun ProfilePreviewLight() {
     LifeMusicTheme {
         ProfilePage(
             name = "Luis",
             email = "luis@lifemusic.com",
+            birthDate = 946684800000,
             verified = true,
-            memberSince = "Enero 2023",
             isEditing = false,
             isLoading = false,
             errorMessage = null,
@@ -285,15 +326,19 @@ fun ProfilePagePreviewLight() {
     }
 }
 
-@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES, name = "ProfilePage - Dark Mode")
+@Preview(
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+    name = "Profile - Dark"
+)
 @Composable
-fun ProfilePagePreviewDark() {
+fun ProfilePreviewDark() {
     LifeMusicTheme {
         ProfilePage(
             name = "Luis",
             email = "luis@lifemusic.com",
+            birthDate = 946684800000,
             verified = true,
-            memberSince = "Enero 2023",
             isEditing = false,
             isLoading = false,
             errorMessage = null,

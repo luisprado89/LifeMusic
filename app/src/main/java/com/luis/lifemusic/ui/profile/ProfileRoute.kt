@@ -47,8 +47,8 @@ fun ProfileRoute(
     ProfilePage(
         name = uiState.name,
         email = uiState.email,
+        birthDate = uiState.birthDate,
         verified = uiState.verified,
-        memberSince = uiState.memberSince,
         isEditing = uiState.isEditing,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
