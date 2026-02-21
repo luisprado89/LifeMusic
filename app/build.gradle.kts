@@ -82,4 +82,26 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
 
+// ============================================================
+// DEPENDENCIAS DE RED (RETROFIT + OKHTTP)
+// ============================================================
+
+// 🎯 RETROFIT: Cliente HTTP para comunicarnos con Spotify API
+// - Convierte automáticamente JSON a objetos Kotlin
+// - Maneja peticiones asíncronas con corrutinas (suspend functions)
+    implementation(libs.retrofit)
+
+// 🎯 CONVERTER GSON: Traduce JSON ↔ objetos Kotlin
+// - Usamos Gson porque es simple y Spotify devuelve JSON complejo
+// - Alternativa: kotlinx.serialization (más moderno pero más complejo)
+    implementation(libs.converter.gson)
+
+// 🎯 OKHTTP: Cliente HTTP subyacente que Retrofit usa
+// - Necesario para añadir INTERCEPTORES (logs, autenticación)
+    implementation(libs.okhttp)
+
+// 🎯 LOGGING INTERCEPTOR: VER TODAS LAS LLAMADAS API EN LOGCAT
+// - IMPRESCINDIBLE en desarrollo para depurar
+// - Muestra URL, headers, cuerpo de petición y respuesta
+    implementation(libs.logging.interceptor)
 }
