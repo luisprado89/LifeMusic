@@ -104,4 +104,9 @@ dependencies {
 // - IMPRESCINDIBLE en desarrollo para depurar
 // - Muestra URL, headers, cuerpo de petición y respuesta
     implementation(libs.logging.interceptor)
+
+// 🖼️ COIL COMPOSE: CARGA EFICIENTE DE IMÁGENES EN JETPACK COMPOSE
+// - Compatible con Compose y Kotlin multiplatform
+// - Soporta decodificación, caché, animaciones y transformación de imágenes
+    implementation(libs.coil.compose)
 }

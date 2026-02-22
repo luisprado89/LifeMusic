@@ -3,12 +3,10 @@ package com.luis.lifemusic.data
 import android.content.Context
 import androidx.room.Room
 import com.luis.lifemusic.data.local.LifeMusicDatabase
-import com.luis.lifemusic.data.repository.FavoritesRepository
-import com.luis.lifemusic.data.repository.FavoritesRepositoryImpl
-import com.luis.lifemusic.data.repository.SessionRepository
-import com.luis.lifemusic.data.repository.SessionRepositoryImpl
-import com.luis.lifemusic.data.repository.UserRepository
-import com.luis.lifemusic.data.repository.UserRepositoryImpl
+import com.luis.lifemusic.data.repository.*
+// 🔥 IMPORTANTE: Importa el repositorio de Spotify
+import com.luis.lifemusic.data.remote.spotify.api.SpotifyApiClient
+import com.luis.lifemusic.data.remote.auth.SpotifyTokenManager
 
 /**
  * AppContainer = contenedor manual de dependencias (sin Hilt/Koin).
@@ -75,9 +73,27 @@ class AppContainer(appContext: Context) {
         FavoritesRepositoryImpl(favoriteDao)
     }
 
+    // ------------------------------------------------------------
+    // 3) SPOTIFY API (NUEVO)
+    // ------------------------------------------------------------
+
+    /**
+     * Repositorio de Spotify para obtener canciones.
+     * Se inicializa de forma perezosa (lazy) para no bloquear el arranque.
+     */
+    val spotifyRepository: SpotifyRepository by lazy {
+        // Forzar la inicialización del cliente de Spotify
+        // Esto hará que se obtenga el token la primera vez
+        android.util.Log.d("AppContainer", "🎵 Inicializando SpotifyRepository...")
+
+        // Acceder al apiService para forzar la creación de Retrofit
+        val test = SpotifyApiClient.apiService
+
+        SpotifyRepository()
+    }
 
     // ------------------------------------------------------------
-    // 3) RETROFIT (API remota) — listo para añadirlo más adelante
+    // 4) RETROFIT (futuro)
     // ------------------------------------------------------------
     /**
      * Aquí irá:

@@ -1,52 +1,36 @@
 package com.luis.lifemusic.ui.detail
 
-import com.luis.lifemusic.data.Song
+import com.luis.lifemusic.data.localsed.LocalSeedSong
 
 /**
- * DetailUiState
- *
- * Representa el estado inmutable de la pantalla Detail.
- *
- * ✅ Principios:
- * - Es un data class inmutable.
- * - Solo contiene datos necesarios para pintar la UI.
- * - No contiene lógica de negocio.
- *
- * Es emitido por DetailViewModel mediante StateFlow
- * y observado desde DetailRoute.
+ * Estado de la UI para la pantalla de detalle de una canción.
  */
 data class DetailUiState(
 
     /**
-     * Canción actual a mostrar.
-     *
-     * - null mientras se está cargando.
-     * - null si ocurre un error.
+     * La canción cuyos detalles se están mostrando.
+     * Es `null` durante la carga inicial o si ocurre un error.
      */
-    val song: Song? = null,
+    val song: LocalSeedSong? = null,
 
     /**
-     * Estado actual del favorito para el usuario logueado.
-     * Permite desacoplar el toggle de favorito del modelo Song.
+     * Indica si la canción actual es favorita para el usuario logueado.
+     * Permite al botón de favorito saber si debe mostrar "Añadir" o "Quitar".
      */
     val isFavorite: Boolean = false,
 
     /**
-     * Indica si se están cargando los datos del detalle.
+     * Indica si se están cargando los datos.
      */
     val isLoading: Boolean = false,
 
     /**
-     * Mensaje de error opcional.
-     * Si no es null, la UI mostrará feedback y botón de reintento.
+     * Mensaje de error para mostrar en la UI.
      */
     val errorMessage: String? = null,
 
     /**
-     * Flag de sesión para proteger la pantalla.
-     *
-     * true  -> sesión válida.
-     * false -> sesión inválida, DetailRoute debe redirigir a Login.
+     * Flag para saber si hay una sesión activa.
      */
     val hasActiveSession: Boolean = true
 )

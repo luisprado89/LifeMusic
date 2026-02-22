@@ -1,50 +1,50 @@
 package com.luis.lifemusic.page
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.component.SongListItem
-import com.luis.lifemusic.data.Song
-import com.luis.lifemusic.data.sampleSongs
+import com.luis.lifemusic.data.localsed.LocalSeedSong // Importación añadida
+import com.luis.lifemusic.data.localsed.localSeedSongs
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
 /**
- * Destination de la lista completa.
+ * Destino para la pantalla "Mis Favoritos".
  */
 object ListDestination : NavigationDestination {
     override val route: String = "list"
-    override val title: String = "Todas las canciones"
+    override val title: String = "Mis Favoritos"
 }
 
 /**
- * ListPage (UI pura).
- *
- * ✅ Principio MVVM:
- * - Esta pantalla NO carga datos por sí sola.
- * - Recibe estado (songs / loading / error) desde ListRoute/ListViewModel.
- * - Solo renderiza UI y emite eventos de navegación.
+ * ListPage (UI pura), ahora muestra la lista de favoritos del usuario.
  */
 @Composable
 fun ListPage(
-    songs: List<Song>,
+    favoriteSongs: List<LocalSeedSong>,
     isLoading: Boolean,
     errorMessage: String?,
-    onRetry: () -> Unit,
-    onNavigateToDetail: (Int) -> Unit = {},
+    onFavoriteClick: (String) -> Unit, // spotifyId
+    onNavigateToDetail: (String) -> Unit, // spotifyId
     onBackClick: () -> Unit = {}
 ) {
     MainScaffold(
@@ -52,98 +52,75 @@ fun ListPage(
         onBackClick = onBackClick
     ) { padding ->
 
-        // 🔄 Estado de carga
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@MainScaffold
         }
 
-        // ❌ Estado de error
         if (!errorMessage.isNullOrBlank()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onRetry) {
-                    Text("Reintentar")
-                }
+                Button(onClick = { /* onRetry podría necesitarse de nuevo */ }) { Text("Reintentar") }
+            }
+            return@MainScaffold
+        }
+        
+        if (favoriteSongs.isEmpty()) {
+             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text("Aún no tienes canciones favoritas.", textAlign = TextAlign.Center)
             }
             return@MainScaffold
         }
 
-        // ✅ Estado normal
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(songs) { song ->
-                /**
-                 * Click en toda la tarjeta → navegar al detalle por ID.
-                 * Nunca se navega pasando el objeto completo.
-                 */
-                Surface(
-                    modifier = Modifier.clickable {
-                        onNavigateToDetail(song.id)
-                    }
-                ) {
-                    SongListItem(
-                        imageRes = song.imageRes,
-                        title = song.title,
-                        artist = song.artist,
-                        album = song.album,
-                        duration = song.duration,
-                        isFavorite = song.isFavorite
-                    )
-                }
+            items(favoriteSongs, key = { it.spotifyId }) { song ->
+                SongListItem(
+                    song = song,
+                    isFavorite = true, 
+                    onItemClick = { onNavigateToDetail(song.spotifyId) },
+                    onFavoriteClick = { onFavoriteClick(song.spotifyId) }
+                )
             }
         }
     }
 }
+
 
 @Preview(showBackground = true, name = "ListPage - Light Mode")
 @Composable
 fun ListPagePreviewLight() {
     LifeMusicTheme {
         ListPage(
-            songs = sampleSongs,
+            favoriteSongs = localSeedSongs.take(5),
             isLoading = false,
             errorMessage = null,
-            onRetry = {}
+            onFavoriteClick = {},
+            onNavigateToDetail = {},
+            onBackClick = {}
         )
     }
 }
 
-@Preview(
-    showBackground = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "ListPage - Dark Mode"
-)
+@Preview(showBackground = true, name = "ListPage - Empty")
 @Composable
-fun ListPagePreviewDark() {
+fun ListPagePreviewEmpty() {
     LifeMusicTheme {
         ListPage(
-            songs = sampleSongs,
+            favoriteSongs = emptyList(),
             isLoading = false,
             errorMessage = null,
-            onRetry = {}
+            onFavoriteClick = {},
+            onNavigateToDetail = {},
+            onBackClick = {}
         )
     }
 }

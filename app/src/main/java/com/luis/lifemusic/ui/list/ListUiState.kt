@@ -1,45 +1,31 @@
 package com.luis.lifemusic.ui.list
 
-import com.luis.lifemusic.data.Song
+import com.luis.lifemusic.data.localsed.LocalSeedSong
 
 /**
- * ListUiState
- *
- * Representa el estado inmutable de la pantalla List.
- *
- * ✅ Principios:
- * - Es un data class inmutable.
- * - Solo contiene datos necesarios para pintar la UI.
- * - No contiene lógica de negocio.
- *
- * Es emitido por ListViewModel mediante StateFlow
- * y observado desde ListRoute.
+ * Estado de la UI para la pantalla de la lista de favoritos.
  */
 data class ListUiState(
 
     /**
-     * Canciones que se mostrarán en la lista principal.
+     * La lista de canciones favoritas del usuario.
+     * Se obtiene cruzando los IDs de favoritos de Room con el catálogo de canciones.
      */
-    val songs: List<Song> = emptyList(),
+    val favoriteSongs: List<LocalSeedSong> = emptyList(),
 
     /**
-     * Indica si se están cargando datos.
-     * Permite mostrar un CircularProgressIndicator.
+     * Indica si se está realizando la carga inicial o si hay una operación en curso.
      */
     val isLoading: Boolean = false,
 
     /**
-     * Mensaje de error opcional.
-     * Si no es null, la UI mostrará feedback + botón de reintento.
+     * Mensaje de error para mostrar en la UI si algo falla.
      */
     val errorMessage: String? = null,
 
     /**
-     * Flag de sesión para proteger la pantalla.
-     *
-     * true  -> sesión válida, se permite mostrar la lista.
-     * false -> sesión inválida, ListRoute debe avisar al NavHost
-     *          para redirigir a Login.
+     * Flag para saber si hay una sesión activa.
+     * Si es `false`, la Route se encargará de navegar al Login.
      */
     val hasActiveSession: Boolean = true
 )

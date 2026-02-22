@@ -8,15 +8,13 @@ import androidx.room.Index
 /**
  * Tabla de favoritos por usuario.
  *
- * ✅ Relación: (userId + songId) como clave compuesta
- * - Un usuario no puede marcar la misma canción como favorita 2 veces.
- *
- * ✅ songId es Int porque viene del modelo SongData (sampleSongs).
- * - Más adelante, si las canciones vienen de API/Room, se mantiene la idea de id estable.
+ * ✅ Almacena el ID de Spotify (String) de la canción, no un Int local.
+ * - Esto permite que los favoritos sean consistentes entre datos locales y de la API.
  */
 @Entity(
     tableName = "favorites",
-    primaryKeys = ["user_id", "song_id"],
+    // La clave primaria compuesta asegura que un usuario no puede marcar la misma canción dos veces.
+    primaryKeys = ["user_id", "song_spotify_id"],
     foreignKeys = [
         ForeignKey(
             entity = UserEntity::class,
@@ -27,13 +25,14 @@ import androidx.room.Index
     ],
     indices = [
         Index(value = ["user_id"]),
-        Index(value = ["song_id"]),
+        Index(value = ["song_spotify_id"]),
     ]
 )
 data class FavoriteEntity(
     @ColumnInfo(name = "user_id")
     val userId: Long,
 
-    @ColumnInfo(name = "song_id")
-    val songId: Int
+    // Cambiamos de Int a String para guardar el spotifyId.
+    @ColumnInfo(name = "song_spotify_id")
+    val songSpotifyId: String
 )

@@ -9,19 +9,7 @@ import com.luis.lifemusic.page.DetailPage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * DetailRoute
- *
- * Capa contenedora entre DetailPage (UI pura)
- * y DetailViewModel (lógica + estado).
- *
- * ✅ Responsabilidades:
- * - Obtener el ViewModel desde la Factory global.
- * - Observar el UiState (StateFlow).
- * - Traducir estado + eventos a la UI.
- * - Gestionar guard de sesión sin mezclar navegación en el ViewModel.
- *
- * ❌ El ViewModel NO navega.
- * ❌ La Page NO conoce repositorios.
+ * DetailRoute conecta el DetailViewModel con la DetailPage.
  */
 @Composable
 fun DetailRoute(
@@ -29,28 +17,23 @@ fun DetailRoute(
     onSessionExpired: () -> Unit,
     viewModel: DetailViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    // Observamos el estado emitido por el ViewModel.
     val uiState by viewModel.uiState.collectAsState()
 
-    /**
-     * Guard de sesión:
-     * Si la sesión deja de ser válida (userId null en DataStore),
-     * avisamos al NavHost para volver a Login.
-     */
     LaunchedEffect(uiState.hasActiveSession) {
         if (!uiState.hasActiveSession) {
             onSessionExpired()
         }
     }
 
-    // Delegamos renderizado a la UI pura.
     DetailPage(
         song = uiState.song,
         isFavorite = uiState.isFavorite,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
-        onRetry = viewModel::loadDetail,
-        onFavoriteClick = viewModel::onFavoriteClick,
+        // Corregido: La carga es automática, onRetry podría re-disparar la observación si fuera necesario.
+        onRetry = { /* Lógica de reintento si se implementa */ }, 
+        // Corregido: El evento ahora se llama toggleFavorite.
+        onFavoriteClick = viewModel::toggleFavorite,
         onBackClick = onBackClick
     )
 }

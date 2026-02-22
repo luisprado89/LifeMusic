@@ -1,54 +1,43 @@
 package com.luis.lifemusic.ui.home
 
-import com.luis.lifemusic.data.Song
+import com.luis.lifemusic.data.localsed.LocalSeedSong
 
 /**
- * HomeUiState
- *
- * Representa el estado inmutable de la pantalla Home.
- *
- * ✅ Principios:
- * - Es un data class inmutable.
- * - Solo contiene datos necesarios para pintar la UI.
- * - No contiene lógica de negocio.
- *
- * Este estado es emitido por HomeViewModel mediante StateFlow
- * y observado desde HomeRoute.
+ * Estado de la UI para la pantalla de inicio (Home).
  */
 data class HomeUiState(
 
     /**
-     * Canciones mostradas en la sección:
-     * "Recomendadas para ti".
+     * Canciones para la sección "Recomendadas para ti".
+     * Se calculan en base a los artistas favoritos del usuario.
      */
-    val recommendedSongs: List<Song> = emptyList(),
+    val recommendedSongs: List<LocalSeedSong> = emptyList(),
 
     /**
-     * Canciones mostradas en la sección:
-     * "Nuevos lanzamientos".
+     * Canciones para la sección "Nuevos Lanzamientos".
+     * Se basa en la fecha de lanzamiento de las canciones.
      */
-    val newReleaseSongs: List<Song> = emptyList(),
+    val newReleaseSongs: List<LocalSeedSong> = emptyList(),
 
     /**
-     * Indica si se están cargando datos.
-     * Permite mostrar un CircularProgressIndicator en la UI.
+     * Canciones para la sección "Más Populares".
+     * Se basa en el índice de popularidad de Spotify.
+     */
+    val popularSongs: List<LocalSeedSong> = emptyList(),
+
+    /**
+     * Indica si se están cargando los datos de las secciones.
      */
     val isLoading: Boolean = false,
 
     /**
-     * Mensaje de error opcional.
-     * Si no es null, la UI mostrará feedback y botón de reintento.
+     * Mensaje de error para mostrar si falla la carga de datos.
      */
     val errorMessage: String? = null,
 
     /**
-     * Flag de sesión para proteger Home.
-     *
-     * true  -> Hay sesión activa (userId válido en DataStore).
-     * false -> No hay sesión activa → se debe redirigir a Login.
-     *
-     * Este campo permite implementar un "guard de sesión"
-     * sin mezclar lógica de navegación en el ViewModel.
+     * Flag para saber si hay una sesión activa.
+     * Si es `false`, la Route se encargará de navegar al Login.
      */
     val hasActiveSession: Boolean = true
 )

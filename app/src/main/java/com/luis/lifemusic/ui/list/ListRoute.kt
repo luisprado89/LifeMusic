@@ -9,47 +9,30 @@ import com.luis.lifemusic.page.ListPage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * ListRoute
- *
- * Capa contenedora entre ListPage (UI pura)
- * y ListViewModel (lógica + estado).
- *
- * ✅ Responsabilidades:
- * - Obtener el ViewModel usando la Factory global.
- * - Observar el UiState (StateFlow).
- * - Traducir estado + eventos a la UI.
- * - Gestionar guard de sesión sin meter navegación en el ViewModel.
- *
- * ❌ El ViewModel NO navega.
- * ❌ La Page NO conoce repositorios.
+ * ListRoute conecta el ListViewModel con la ListPage.
+ * Ahora gestiona la lista de favoritos.
  */
 @Composable
 fun ListRoute(
-    onNavigateToDetail: (Int) -> Unit,
+    onNavigateToDetail: (String) -> Unit, // Ahora es String
     onBackClick: () -> Unit,
     onSessionExpired: () -> Unit,
     viewModel: ListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    // Observamos el estado emitido por el ViewModel.
     val uiState by viewModel.uiState.collectAsState()
 
-    /**
-     * Guard de sesión:
-     * Si se pierde la sesión (userId null en DataStore),
-     * notificamos al NavHost para redirigir a Login.
-     */
     LaunchedEffect(uiState.hasActiveSession) {
         if (!uiState.hasActiveSession) {
             onSessionExpired()
         }
     }
 
-    // Delegamos renderizado a la UI pura.
     ListPage(
-        songs = uiState.songs,
+        // Pasamos la lista de favoritos y los callbacks correctos
+        favoriteSongs = uiState.favoriteSongs,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
-        onRetry = viewModel::loadSongs,
+        onFavoriteClick = viewModel::removeFavorite, // Conectamos el click del corazón para eliminar
         onNavigateToDetail = onNavigateToDetail,
         onBackClick = onBackClick
     )

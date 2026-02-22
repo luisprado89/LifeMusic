@@ -9,50 +9,40 @@ import com.luis.lifemusic.page.HomePage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * HomeRoute = capa contenedora entre HomePage (UI pura)
- * y HomeViewModel (lógica + estado).
- *
- * ✅ Responsabilidades:
- * - Obtener el ViewModel mediante la Factory global.
- * - Observar el UiState (StateFlow).
- * - Pasar estado y callbacks a HomePage.
- * - Gestionar eventos de sesión (expirada / no válida).
- *
- * ❌ No navega directamente.
- * - Solo emite eventos hacia el NavHost mediante callbacks.
+ * HomeRoute conecta el HomeViewModel con la HomePage.
  */
 @Composable
 fun HomeRoute(
     onNavigateToList: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToDetail: (Int) -> Unit,
+    onNavigateToDetail: (String) -> Unit, // Ahora es String
     onSessionExpired: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
-    // Observamos el estado del ViewModel.
     val uiState by viewModel.uiState.collectAsState()
 
-    /**
-     * Guard de sesión:
-     * Si el usuario pierde la sesión (DataStore → sessionUserId = null),
-     * notificamos al NavHost para que vuelva a Login
-     * limpiando el back stack.
-     */
     LaunchedEffect(uiState.hasActiveSession) {
         if (!uiState.hasActiveSession) {
             onSessionExpired()
         }
     }
 
-    // Delegamos renderizado a la UI pura.
     HomePage(
+        // Pasamos las 3 listas de canciones
         recommendedSongs = uiState.recommendedSongs,
         newReleaseSongs = uiState.newReleaseSongs,
+        popularSongs = uiState.popularSongs,
+
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
-        onRetry = viewModel::loadHome,
+        
+        // Los eventos se conectan directamente a las funciones del ViewModel
+        onRetry = { /* Lógica de reintento si se necesita */ },
+        onFavoriteClick = viewModel::addFavorite, // Conectamos el click del corazón
+        onNavigateToDetail = onNavigateToDetail, // Pasamos el callback de navegación
+        
+        // Navegación a otras pantallas
         onNavigateToList = onNavigateToList,
-        onNavigateToProfile = onNavigateToProfile,
-        onNavigateToDetail = onNavigateToDetail
+        onNavigateToProfile = onNavigateToProfile
     )
 }

@@ -8,17 +8,25 @@ class FavoritesRepositoryImpl(
     private val favoriteDao: FavoriteDao
 ) : FavoritesRepository {
 
-    override fun observeFavoriteSongIds(userId: Long): Flow<List<Int>> =
+    override fun observeFavoriteSongIds(userId: Long): Flow<List<String>> =
         favoriteDao.observeFavoriteSongIds(userId)
 
-    override suspend fun addFavorite(userId: Long, songId: Int) {
-        favoriteDao.addFavorite(FavoriteEntity(userId = userId, songId = songId))
+    override suspend fun addFavorites(userId: Long, songSpotifyIds: List<String>) {
+        val favoriteEntities = songSpotifyIds.map { spotifyId ->
+            FavoriteEntity(userId = userId, songSpotifyId = spotifyId)
+        }
+        favoriteDao.addFavorites(favoriteEntities)
     }
 
-    override suspend fun removeFavorite(userId: Long, songId: Int) {
-        favoriteDao.removeFavorite(userId, songId)
+    override suspend fun addFavorite(userId: Long, songSpotifyId: String) {
+        val favoriteEntity = FavoriteEntity(userId = userId, songSpotifyId = songSpotifyId)
+        favoriteDao.addFavorite(favoriteEntity)
     }
 
-    override suspend fun isFavorite(userId: Long, songId: Int): Boolean =
-        favoriteDao.isFavorite(userId, songId)
+    override suspend fun removeFavorite(userId: Long, songSpotifyId: String) {
+        favoriteDao.removeFavorite(userId, songSpotifyId)
+    }
+
+    override suspend fun isFavorite(userId: Long, songSpotifyId: String): Boolean =
+        favoriteDao.isFavorite(userId, songSpotifyId)
 }

@@ -3,21 +3,36 @@ package com.luis.lifemusic.data.repository
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Favoritos por usuario.
+ * Repositorio para gestionar los favoritos de un usuario.
  *
- * ✅ La UI/VM no habla con FavoriteDao directo.
+ * Abstrae el origen de datos (DAO) de los ViewModels.
+ * Todas las operaciones se basan en el ID de Spotify (String).
  */
 interface FavoritesRepository {
 
-    /** Observa los songIds favoritos de un usuario. */
-    fun observeFavoriteSongIds(userId: Long): Flow<List<Int>>
+    /**
+     * Observa en tiempo real la lista de IDs de canciones favoritas de un usuario.
+     */
+    fun observeFavoriteSongIds(userId: Long): Flow<List<String>>
 
-    /** Marca favorito. */
-    suspend fun addFavorite(userId: Long, songId: Int)
+    /**
+     * Añade una lista de canciones a los favoritos de un usuario.
+     * Ideal para insertar las 6 canciones iniciales en el registro.
+     */
+    suspend fun addFavorites(userId: Long, songSpotifyIds: List<String>)
 
-    /** Quita favorito. */
-    suspend fun removeFavorite(userId: Long, songId: Int)
+    /**
+     * Añade una única canción a los favoritos de un usuario.
+     */
+    suspend fun addFavorite(userId: Long, songSpotifyId: String)
 
-    /** Comprueba si una canción es favorita. */
-    suspend fun isFavorite(userId: Long, songId: Int): Boolean
+    /**
+     * Elimina una canción de los favoritos de un usuario.
+     */
+    suspend fun removeFavorite(userId: Long, songSpotifyId: String)
+
+    /**
+     * Comprueba si una canción es favorita para un usuario.
+     */
+    suspend fun isFavorite(userId: Long, songSpotifyId: String): Boolean
 }

@@ -7,7 +7,13 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.luis.lifemusic.page.*
+import com.luis.lifemusic.page.DetailDestination
+import com.luis.lifemusic.page.HomeDestination
+import com.luis.lifemusic.page.ListDestination
+import com.luis.lifemusic.page.LoginDestination
+import com.luis.lifemusic.page.ProfileDestination
+import com.luis.lifemusic.page.RecoverDestination
+import com.luis.lifemusic.page.RegisterDestination
 import com.luis.lifemusic.ui.detail.DetailRoute
 import com.luis.lifemusic.ui.home.HomeRoute
 import com.luis.lifemusic.ui.list.ListRoute
@@ -18,18 +24,6 @@ import com.luis.lifemusic.ui.register.RegisterRoute
 
 /**
  * AppNavHost centraliza toda la navegación de la app.
- *
- * ✅ Regla:
- * - Navegamos por IDs estables (songId) y NO por títulos.
- *
- * ✅ Arquitectura:
- * - Las pantallas "Page" son UI pura.
- * - Las pantallas "Route" conectan UI con ViewModels (MVVM).
- * - El guard de sesión se aplica en cada Route (hasActiveSession).
- *
- * 🔜 Evolución:
- * - Sustituir sampleSongs por repositorios reales (Room/Retrofit).
- * - Manteniendo la inyección desde AppViewModelProvider.
  */
 @Composable
 fun AppNavHost(
@@ -47,11 +41,6 @@ fun AppNavHost(
         // ---------------------------
 
         composable(LoginDestination.route) {
-            /**
-             * LoginRoute:
-             * - Conecta LoginPage (UI pura) con LoginViewModel.
-             * - La navegación se resuelve aquí en NavHost (no en el ViewModel).
-             */
             LoginRoute(
                 onLoginSuccess = {
                     navController.navigate(HomeDestination.route) {
@@ -65,11 +54,6 @@ fun AppNavHost(
         }
 
         composable(RegisterDestination.route) {
-            /**
-             * RegisterRoute:
-             * - Conecta RegisterPage (UI pura) con RegisterViewModel.
-             * - Tras registro exitoso, navegamos a Home limpiando back stack.
-             */
             RegisterRoute(
                 onBackClick = { navController.popBackStack() },
                 onRegisterSuccess = {
@@ -82,11 +66,6 @@ fun AppNavHost(
         }
 
         composable(RecoverDestination.route) {
-            /**
-             * RecoverRoute:
-             * - Conecta RecoverPasswordPage (UI pura) con RecoverViewModel.
-             * - Gestiona recuperación por pregunta de seguridad.
-             */
             RecoverRoute(
                 onBackClick = { navController.popBackStack() }
             )
@@ -97,17 +76,11 @@ fun AppNavHost(
         // ---------------------------
 
         composable(HomeDestination.route) {
-            /**
-             * HomeRoute:
-             * - Conecta HomePage (UI pura) con HomeViewModel.
-             * - Incluye guard de sesión:
-             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
-             */
             HomeRoute(
                 onNavigateToList = { navController.navigate(ListDestination.route) },
                 onNavigateToProfile = { navController.navigate(ProfileDestination.route) },
-                onNavigateToDetail = { songId ->
-                    navController.navigate("${DetailDestination.route}/$songId")
+                onNavigateToDetail = { spotifyId -> // Ahora se espera un String
+                    navController.navigate("${DetailDestination.route}/$spotifyId")
                 },
                 onSessionExpired = {
                     navController.navigate(LoginDestination.route) {
@@ -119,16 +92,10 @@ fun AppNavHost(
         }
 
         composable(ListDestination.route) {
-            /**
-             * ListRoute:
-             * - Conecta ListPage (UI pura) con ListViewModel.
-             * - Incluye guard de sesión:
-             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
-             */
             ListRoute(
                 onBackClick = { navController.popBackStack() },
-                onNavigateToDetail = { songId ->
-                    navController.navigate("${DetailDestination.route}/$songId")
+                onNavigateToDetail = { spotifyId -> // Ahora se espera un String
+                    navController.navigate("${DetailDestination.route}/$spotifyId")
                 },
                 onSessionExpired = {
                     navController.navigate(LoginDestination.route) {
@@ -139,21 +106,14 @@ fun AppNavHost(
             )
         }
 
-        // DETAIL con argumento
+        // DETAIL con argumento de tipo String
         composable(
             route = DetailDestination.routeWithArgs,
             arguments = listOf(
-                navArgument(DetailDestination.songIdArg) { type = NavType.IntType }
+                // Corregido: Usa el argumento correcto (spotifyIdArg) y el tipo correcto (StringType)
+                navArgument(DetailDestination.spotifyIdArg) { type = NavType.StringType }
             )
         ) {
-            /**
-             * DetailRoute:
-             * - Conecta DetailPage (UI pura) con DetailViewModel.
-             * - Lee songId desde argumentos (SavedStateHandle).
-             * - Gestiona favoritos reales (Room) por usuario.
-             * - Incluye guard de sesión:
-             *   si se pierde la sesión, vuelve a Login limpiando el back stack.
-             */
             DetailRoute(
                 onBackClick = { navController.popBackStack() },
                 onSessionExpired = {
@@ -166,14 +126,6 @@ fun AppNavHost(
         }
 
         composable(ProfileDestination.route) {
-            /**
-             * ProfileRoute:
-             * - Conecta ProfilePage (UI pura) con ProfileViewModel.
-             * - Permite editar nombre/email y guardar en Room.
-             * - Logout: lo ejecuta el ViewModel limpiando DataStore.
-             *   Cuando eso ocurre, el guard de sesión detecta session inválida y
-             *   se dispara onSessionExpired (redirección a Login).
-             */
             ProfileRoute(
                 onBackClick = { navController.popBackStack() },
                 onSessionExpired = {

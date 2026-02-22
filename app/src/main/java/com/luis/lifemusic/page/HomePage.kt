@@ -1,11 +1,17 @@
 package com.luis.lifemusic.page
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -19,8 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.component.SongCard
-import com.luis.lifemusic.data.Song
-import com.luis.lifemusic.data.sampleSongs
+import com.luis.lifemusic.data.localsed.LocalSeedSong
+import com.luis.lifemusic.data.localsed.localSeedSongs
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
 
@@ -29,24 +35,18 @@ object HomeDestination : NavigationDestination {
     override val title = "Explora tu música"
 }
 
-/**
- * HomePage (UI pura).
- *
- * ✅ Esta pantalla:
- * - No carga datos por su cuenta.
- * - Recibe estado y callbacks desde HomeRoute/HomeViewModel.
- * - Solo renderiza UI y emite eventos de navegación.
- */
 @Composable
 fun HomePage(
-    recommendedSongs: List<Song>,
-    newReleaseSongs: List<Song>,
+    recommendedSongs: List<LocalSeedSong>,
+    newReleaseSongs: List<LocalSeedSong>,
+    popularSongs: List<LocalSeedSong>,
     isLoading: Boolean,
     errorMessage: String?,
     onRetry: () -> Unit,
+    onFavoriteClick: (String) -> Unit, // spotifyId
+    onNavigateToDetail: (String) -> Unit, // spotifyId
     onNavigateToList: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToDetail: (Int) -> Unit = {}
 ) {
     MainScaffold(
         title = HomeDestination.title,
@@ -55,141 +55,115 @@ fun HomePage(
         onProfileClick = onNavigateToProfile
     ) { padding ->
 
-        // 🔄 Estado de carga
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
             return@MainScaffold
         }
 
-        // ❌ Estado de error
         if (!errorMessage.isNullOrBlank()) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = onRetry) {
-                    Text("Reintentar")
-                }
+                Button(onClick = onRetry) { Text("Reintentar") }
             }
             return@MainScaffold
         }
 
-        // ✅ Estado normal
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+            item { Spacer(modifier = Modifier.height(16.dp)) }
 
             item {
-                Text(
-                    text = "Recomendadas para ti",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                SongSection(
+                    title = "Recomendadas para ti",
+                    songs = recommendedSongs,
+                    onFavoriteClick = onFavoriteClick,
+                    onNavigateToDetail = onNavigateToDetail
                 )
-
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(recommendedSongs) { song ->
-                        Box(
-                            modifier = Modifier.clickable {
-                                onNavigateToDetail(song.id)
-                            }
-                        ) {
-                            SongCard(
-                                imageRes = song.imageRes,
-                                title = song.title,
-                                artist = song.artist,
-                                duration = song.duration,
-                                isFavorite = song.isFavorite
-                            )
-                        }
-                    }
-                }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "Nuevos lanzamientos",
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
+            item { Spacer(modifier = Modifier.height(24.dp)) }
 
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(newReleaseSongs) { song ->
-                        Box(
-                            modifier = Modifier.clickable {
-                                onNavigateToDetail(song.id)
-                            }
-                        ) {
-                            SongCard(
-                                imageRes = song.imageRes,
-                                title = song.title,
-                                artist = song.artist,
-                                duration = song.duration,
-                                isFavorite = song.isFavorite
-                            )
-                        }
-                    }
-                }
+            item {
+                SongSection(
+                    title = "Nuevos Lanzamientos",
+                    songs = newReleaseSongs,
+                    onFavoriteClick = onFavoriteClick,
+                    onNavigateToDetail = onNavigateToDetail
+                )
+            }
+            
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+
+            item {
+                SongSection(
+                    title = "Más Populares",
+                    songs = popularSongs,
+                    onFavoriteClick = onFavoriteClick,
+                    onNavigateToDetail = onNavigateToDetail
+                )
             }
         }
     }
 }
+
+/**
+ * Sección que muestra una parrilla de 2 filas con scroll horizontal unificado.
+ */
+@Composable
+private fun SongSection(
+    title: String,
+    songs: List<LocalSeedSong>,
+    onFavoriteClick: (String) -> Unit,
+    onNavigateToDetail: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        LazyHorizontalGrid(
+            rows = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            // La altura debe ser suficiente para 2 tarjetas + el espaciado vertical.
+            // Una SongCard mide aprox 220dp de alto. (220 * 2) + 12 = 452
+            modifier = Modifier.height(460.dp)
+        ) {
+            items(songs, key = { it.spotifyId }) { song ->
+                SongCard(
+                    song = song,
+                    isFavorite = false,
+                    onFavoriteClick = { onFavoriteClick(song.spotifyId) },
+                    onCardClick = { onNavigateToDetail(song.spotifyId) }
+                )
+            }
+        }
+    }
+}
+
 
 @Preview(showBackground = true, name = "HomePage - Light Mode")
 @Composable
 fun HomePagePreviewLight() {
     LifeMusicTheme {
         HomePage(
-            recommendedSongs = sampleSongs.take(3),
-            newReleaseSongs = sampleSongs.takeLast(3),
+            recommendedSongs = localSeedSongs.take(12),
+            newReleaseSongs = localSeedSongs.takeLast(12),
+            popularSongs = localSeedSongs.shuffled().take(12),
             isLoading = false,
             errorMessage = null,
             onRetry = {},
             onNavigateToList = {},
             onNavigateToProfile = {},
-            onNavigateToDetail = {}
+            onNavigateToDetail = {},
+            onFavoriteClick = {}
         )
     }
 }
-
-@Preview(
-    showBackground = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES,
-    name = "HomePage - Dark Mode"
-)
-@Composable
-fun HomePagePreviewDark() {
-    LifeMusicTheme {
-        HomePage(
-            recommendedSongs = sampleSongs.take(3),
-            newReleaseSongs = sampleSongs.takeLast(3),
-            isLoading = false,
-            errorMessage = null,
-            onRetry = {},
-            onNavigateToList = {},
-            onNavigateToProfile = {},
-            onNavigateToDetail = {}
-        )
-    }
-}
-

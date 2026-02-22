@@ -2,100 +2,189 @@ package com.luis.lifemusic.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.luis.lifemusic.data.localsed.LocalSeedSong
+import com.luis.lifemusic.data.repository.FavoritesRepository
 import com.luis.lifemusic.data.repository.SessionRepository
-import com.luis.lifemusic.data.sampleSongs
+import com.luis.lifemusic.data.repository.SpotifyRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.TimeoutCancellationException
 
-/**
- * HomeViewModel
- *
- * ✅ Responsabilidades:
- * - Exponer HomeUiState como StateFlow (estado observable por la UI).
- * - Cargar datos para Home (por ahora desde sampleSongs).
- * - Vigilar si existe sesión activa (userId en DataStore) vía SessionRepository.
- *
- * ✅ Reglas de arquitectura:
- * - El ViewModel NO navega.
- * - La navegación se decide en NavHost.
- * - HomeRoute observa el UiState y emite eventos al NavHost (p.ej. sesión expirada).
- *
- * 🔜 Evolución prevista:
- * - Sustituir sampleSongs por una fuente real (SongsRepository con Retrofit/Room).
- */
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val favoritesRepository: FavoritesRepository,
+    private val spotifyRepository: SpotifyRepository
 ) : ViewModel() {
 
-    /**
-     * Estado interno mutable.
-     * Inicializamos con isLoading=true para que la UI pueda mostrar progreso
-     * mientras cargamos las secciones.
-     */
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
-
-    /** Estado público inmutable para ser observado desde HomeRoute. */
     val uiState: StateFlow<HomeUiState> = _uiState
 
-    init {
-        // 1) Observamos sesión (guard de pantalla)
-        observeSession()
+    // Cache para evitar recargas innecesarias
+    private var cachedSongs: List<LocalSeedSong>? = null
+    private var lastFetchTime: Long = 0
+    private val CACHE_DURATION = 5 * 60 * 1000 // 5 minutos
 
-        // 2) Cargamos contenido inicial de Home
-        loadHome()
+    init {
+        observeHomeContent()
     }
 
-    /**
-     * Observa el userId de DataStore para saber si Home puede mostrarse.
-     *
-     * Regla:
-     * - userId == null  -> no hay sesión activa -> HomeRoute avisará al NavHost.
-     * - userId != null  -> sesión activa -> Home puede continuar.
-     */
-    private fun observeSession() {
+    private fun observeHomeContent() {
         viewModelScope.launch {
-            sessionRepository.sessionUserId.collectLatest { userId ->
-                _uiState.update { current ->
-                    current.copy(hasActiveSession = userId != null)
+            sessionRepository.sessionUserId.flatMapLatest { userId ->
+                if (userId == null) {
+                    flowOf(null to emptySet<String>())
+                } else {
+                    favoritesRepository.observeFavoriteSongIds(userId).map { userId to it.toSet() }
+                }
+            }.collect { (userId, favoriteSongIds) ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = true,
+                        hasActiveSession = userId != null
+                    )
+                }
+
+                if (userId != null) {
+                    loadSectionsWithTimeout(favoriteSongIds)
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            recommendedSongs = emptyList(),
+                            newReleaseSongs = emptyList(),
+                            popularSongs = emptyList(),
+                            errorMessage = "Inicia sesión para descubrir música"
+                        )
+                    }
                 }
             }
         }
     }
 
-    /**
-     * Carga la información de Home.
-     *
-     * Estado UI:
-     * - Pone isLoading=true antes de cargar.
-     * - Si va bien: rellena recommendedSongs y newReleaseSongs.
-     * - Si falla: setea errorMessage para que HomePage muestre feedback + reintento.
-     *
-     * Nota:
-     * - Por ahora usamos sampleSongs para mantener estabilidad
-     *   mientras se completa la migración a repositorios reales.
-     */
-    fun loadHome() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
+    private suspend fun loadSectionsWithTimeout(favoriteIds: Set<String>) {
+        // Timeout de 10 segundos para toda la operación
+        val result = withTimeoutOrNull(10000L) {
             try {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        recommendedSongs = sampleSongs.take(3),
-                        newReleaseSongs = sampleSongs.takeLast(3)
-                    )
+                calculateSections(favoriteIds)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        if (result == null) {
+            // Si hay timeout, mostramos solo canciones locales
+            showLocalOnlySections(favoriteIds)
+        }
+    }
+
+    private suspend fun calculateSections(favoriteIds: Set<String>) {
+        try {
+            // Usar caché si es válido
+            val allSongs = if (shouldRefreshCache()) {
+                spotifyRepository.getDiscoverySongs().also {
+                    cachedSongs = it
+                    lastFetchTime = System.currentTimeMillis()
                 }
-            } catch (_: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "No se pudo cargar la Home"
-                    )
-                }
+            } else {
+                cachedSongs ?: spotifyRepository.getDiscoverySongs()
+            }
+
+            // Si no hay canciones de la API, usar solo locales
+            if (allSongs.isEmpty()) {
+                showLocalOnlySections(favoriteIds)
+                return
+            }
+
+            // Separar locales y de API para estadísticas
+            val localSongs = allSongs.filter { it.imageRes != 0 }
+            val apiSongs = allSongs.filter { it.imageRes == 0 }
+
+            // Log para debugging
+            android.util.Log.d("HomeViewModel",
+                "Locales: ${localSongs.size}, API: ${apiSongs.size}, Total: ${allSongs.size}")
+
+            // Filtrar favoritos
+            val discoverableSongs = allSongs.filter { it.spotifyId !in favoriteIds }
+
+            // Crear secciones con variedad
+            val recommended = createVariedSection(discoverableSongs, 12)
+            val newReleases = discoverableSongs
+                .sortedByDescending { it.releaseDate }
+                .take(12)
+            val popular = discoverableSongs
+                .sortedByDescending { it.popularity }
+                .take(12)
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    recommendedSongs = recommended,
+                    newReleaseSongs = newReleases,
+                    popularSongs = popular,
+                    errorMessage = null
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("HomeViewModel", "Error en calculateSections", e)
+            showLocalOnlySections(favoriteIds)
+        }
+    }
+
+    private fun createVariedSection(songs: List<LocalSeedSong>, limit: Int): List<LocalSeedSong> {
+        // Mezclar para tener variedad de artistas y géneros
+        return songs
+            .shuffled()
+            .distinctBy { it.artistIds.firstOrNull() } // Evitar muchos del mismo artista
+            .take(limit)
+            .ifEmpty { songs.take(limit) }
+    }
+
+    private suspend fun showLocalOnlySections(favoriteIds: Set<String>) {
+        // Usar SOLO el catálogo local cuando la API falla
+        val localOnly = com.luis.lifemusic.data.localsed.localSeedSongs
+            .filter { it.spotifyId !in favoriteIds }
+
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                recommendedSongs = localOnly.shuffled().take(12),
+                newReleaseSongs = localOnly.sortedByDescending { it.releaseDate }.take(12),
+                popularSongs = localOnly.sortedByDescending { it.popularity }.take(12),
+                errorMessage = "Usando catálogo local (sin conexión a API)"
+            )
+        }
+    }
+
+    private fun shouldRefreshCache(): Boolean {
+        return cachedSongs == null ||
+                System.currentTimeMillis() - lastFetchTime > CACHE_DURATION
+    }
+
+    fun addFavorite(songSpotifyId: String) {
+        viewModelScope.launch {
+            val userId = sessionRepository.sessionUserId.first()
+            if (userId != null) {
+                favoritesRepository.addFavorite(userId, songSpotifyId)
+            }
+        }
+    }
+
+    fun refreshContent() {
+        viewModelScope.launch {
+            cachedSongs = null // Forzar refresco
+            val userId = sessionRepository.sessionUserId.first()
+            if (userId != null) {
+                val favoriteIds = favoritesRepository.observeFavoriteSongIds(userId).first().toSet()
+                loadSectionsWithTimeout(favoriteIds)
             }
         }
     }
