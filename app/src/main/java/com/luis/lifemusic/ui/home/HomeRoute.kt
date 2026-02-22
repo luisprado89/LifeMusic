@@ -9,39 +9,63 @@ import com.luis.lifemusic.page.HomePage
 import com.luis.lifemusic.ui.AppViewModelProvider
 
 /**
- * HomeRoute conecta el HomeViewModel con la HomePage.
+ * ============================================================
+ * HOME ROUTE
+ * ============================================================
+ *
+ * 🎯 RESPONSABILIDAD:
+ * - Conectar la UI (HomePage) con el estado del ViewModel (HomeViewModel).
+ * - Gestionar efectos de navegación en base a estado (ej: sesión expirada).
+ *
+ * ✅ ARQUITECTURA:
+ * - HomeRoute NO contiene lógica de negocio.
+ * - Solo:
+ *   1) Observa uiState (StateFlow)
+ *   2) Dispara efectos (LaunchedEffect)
+ *   3) Pasa callbacks a HomePage
  */
 @Composable
 fun HomeRoute(
     onNavigateToList: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToDetail: (String) -> Unit, // Ahora es String
+    onNavigateToDetail: (String) -> Unit, // spotifyId
     onSessionExpired: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
+    // Observamos el estado del ViewModel
     val uiState by viewModel.uiState.collectAsState()
 
+    /**
+     * Si la sesión deja de estar activa, redirigimos a login
+     * (o al flujo que tengas configurado en la navegación).
+     */
     LaunchedEffect(uiState.hasActiveSession) {
         if (!uiState.hasActiveSession) {
             onSessionExpired()
         }
     }
 
+    // Renderizamos la pantalla principal con sus datos y eventos
     HomePage(
-        // Pasamos las 3 listas de canciones
+        // Listas de canciones (3 secciones)
         recommendedSongs = uiState.recommendedSongs,
         newReleaseSongs = uiState.newReleaseSongs,
         popularSongs = uiState.popularSongs,
 
+        // Estados globales
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
-        
-        // Los eventos se conectan directamente a las funciones del ViewModel
-        onRetry = { /* Lógica de reintento si se necesita */ },
-        onFavoriteClick = viewModel::addFavorite, // Conectamos el click del corazón
-        onNavigateToDetail = onNavigateToDetail, // Pasamos el callback de navegación
-        
-        // Navegación a otras pantallas
+
+        // Mensajes informativos
+        offlineNoticeMessage = uiState.offlineNoticeMessage,
+        recommendedInfoMessage = uiState.recommendedInfoMessage,
+
+        // Eventos conectados directamente al ViewModel
+        onRetry = viewModel::refreshContent,
+        onFavoriteClick = viewModel::addFavorite,
+        onNavigateToDetail = onNavigateToDetail,
+
+        // Navegación
         onNavigateToList = onNavigateToList,
         onNavigateToProfile = onNavigateToProfile
     )

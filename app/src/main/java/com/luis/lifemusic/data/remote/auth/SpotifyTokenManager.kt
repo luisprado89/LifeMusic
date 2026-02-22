@@ -1,5 +1,6 @@
 package com.luis.lifemusic.data.remote.auth
 
+import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -11,91 +12,142 @@ import okhttp3.Request
 import org.json.JSONObject
 
 /**
- * Gestor de tokens de Spotify auto-suficiente.
- * Se encarga de obtener y renovar el token automáticamente.
+ * ============================================================
+ * SPOTIFY TOKEN MANAGER
+ * ============================================================
+ *
+ * 🎯 RESPONSABILIDAD:
+ * - Gestionar el token OAuth de Spotify.
+ * - Obtenerlo automáticamente si no existe.
+ * - Renovarlo cuando expira.
+ * - Evitar múltiples peticiones concurrentes de renovación.
+ *
+ * 🔐 FLUJO:
+ * - Usa Client Credentials Flow.
+ * - Envía CLIENT_ID + CLIENT_SECRET en header Basic.
+ * - Recibe access_token + expires_in.
+ *
+ * 🧠 OPTIMIZACIÓN:
+ * - Cachea el token en memoria.
+ * - Aplica margen de seguridad antes de expiración.
+ * - Usa Mutex para evitar múltiples refresh simultáneos.
+ *
+ * 👉 El resto de la app SOLO debe llamar a:
+ *    getValidToken()
  */
 object SpotifyTokenManager {
 
     private const val TAG = "SpotifyTokenManager"
-    private val client = OkHttpClient()
+
+    /** Endpoint oficial para obtener token */
+    private const val TOKEN_URL = "https://accounts.spotify.com/api/token"
+
+    /** Margen de seguridad (1 minuto antes de expirar) */
+    private const val TOKEN_SAFETY_MARGIN_MS = 60_000L
+
+    /** Cliente HTTP interno */
+    private val httpClient = OkHttpClient()
+
+    /** Mutex para evitar renovaciones concurrentes */
     private val mutex = Mutex()
 
-    private var currentToken: String? = null
-    private var tokenExpiration: Long = 0
+    /** Token actual en memoria */
+    @Volatile
+    private var accessToken: String? = null
+
+    /** Momento exacto (epoch ms) en el que expira */
+    @Volatile
+    private var expiresAtEpochMs: Long = 0L
 
     /**
-     * Obtiene un token válido, renovándolo si es necesario.
-     * Esta es la única función que el resto de la app debe llamar.
+     * Devuelve un token válido.
+     *
+     * - Si el token sigue vigente → lo reutiliza.
+     * - Si expiró → lo renueva automáticamente.
      */
     suspend fun getValidToken(): String? = withContext(Dispatchers.IO) {
         mutex.withLock {
-            if (isTokenValid()) {
-                Log.d(TAG, "Usando token existente en caché: ${currentToken?.take(10)}...")
-                return@withLock currentToken
+            val now = System.currentTimeMillis()
+
+            // Si el token existe y no ha expirado, reutilizarlo
+            if (!accessToken.isNullOrBlank() && now < expiresAtEpochMs) {
+                return@withLock accessToken
             }
 
-            Log.d(TAG, "Token no válido o expirado. Pidiendo uno nuevo...")
-            fetchNewToken()
+            // Si no es válido, renovarlo
+            refreshTokenLocked()
         }
-    }
-
-    private fun isTokenValid(): Boolean {
-        return !currentToken.isNullOrBlank() && System.currentTimeMillis() < tokenExpiration
     }
 
     /**
-     * Llama a la API de cuentas de Spotify para obtener un nuevo token de acceso.
+     * Obtiene un nuevo token desde Spotify.
+     * ⚠️ Solo se ejecuta dentro del Mutex.
      */
-    private fun fetchNewToken(): String? {
+    private fun refreshTokenLocked(): String? {
+
         if (!SpotifyCredentials.hasValidCredentials) {
-            Log.e(TAG, "❌ CREDENCIALES INVÁLIDAS:")
-            Log.e(TAG, "   CLIENT_ID: '${SpotifyCredentials.CLIENT_ID}'")
-            Log.e(TAG, "   CLIENT_SECRET: '${SpotifyCredentials.CLIENT_SECRET}'")
-            Log.e(TAG, "   hasValidCredentials: ${SpotifyCredentials.hasValidCredentials}")
+            Log.e(TAG, "❌ Credenciales inválidas")
             return null
         }
 
-        Log.d(TAG, "Intentando obtener token con:")
-        Log.d(TAG, "  CLIENT_ID: ${SpotifyCredentials.CLIENT_ID.take(5)}...")
-        Log.d(TAG, "  CLIENT_SECRET: ${SpotifyCredentials.CLIENT_SECRET.take(5)}...")
-
-        val requestBody = FormBody.Builder()
-            .add("grant_type", "client_credentials")
-            .add("client_id", SpotifyCredentials.CLIENT_ID)
-            .add("client_secret", SpotifyCredentials.CLIENT_SECRET)
-            .build()
+        // Construcción del header Basic Auth
+        val basic = Base64.encodeToString(
+            "${SpotifyCredentials.CLIENT_ID}:${SpotifyCredentials.CLIENT_SECRET}".toByteArray(),
+            Base64.NO_WRAP
+        )
 
         val request = Request.Builder()
-            .url("https://accounts.spotify.com/api/token")
-            .post(requestBody)
-            .addHeader("Content-Type", "application/x-www-form-urlencoded")
+            .url(TOKEN_URL)
+            .post(
+                FormBody.Builder()
+                    .add("grant_type", "client_credentials")
+                    .build()
+            )
+            .header("Authorization", "Basic $basic")
+            .header("Content-Type", "application/x-www-form-urlencoded")
             .build()
 
         return try {
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
+            httpClient.newCall(request).execute().use { response ->
 
-            Log.d(TAG, "Código de respuesta: ${response.code}")
+                val body = response.body?.string().orEmpty()
 
-            if (response.isSuccessful) {
-                val json = JSONObject(responseBody ?: "")
-                val accessToken = json.getString("access_token")
-                val expiresIn = json.getLong("expires_in")
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "❌ Error token HTTP ${response.code}: $body")
+                    accessToken = null
+                    expiresAtEpochMs = 0L
+                    return null
+                }
 
-                tokenExpiration = System.currentTimeMillis() + (expiresIn * 1000L) - 60000
-                currentToken = accessToken
+                val json = JSONObject(body)
+                val token = json.optString("access_token")
+                val expiresIn = json.optLong("expires_in", 0L)
 
-                Log.d(TAG, "✅ Token obtenido con éxito. Expira en ${expiresIn}s")
-                Log.d(TAG, "   Token (primeros 20): ${accessToken.take(20)}...")
-                accessToken
-            } else {
-                Log.e(TAG, "❌ Error al obtener el token: ${response.code}")
-                Log.e(TAG, "   Cuerpo: $responseBody")
-                Log.e(TAG, "   Headers: ${response.headers}")
-                null
+                if (token.isBlank() || expiresIn <= 0L) {
+                    Log.e(TAG, "❌ Respuesta token inválida: $body")
+                    accessToken = null
+                    expiresAtEpochMs = 0L
+                    return null
+                }
+
+                // Guardamos el token en memoria
+                accessToken = token
+
+                // Calculamos expiración con margen de seguridad
+                expiresAtEpochMs =
+                    System.currentTimeMillis() +
+                            (expiresIn * 1000L) -
+                            TOKEN_SAFETY_MARGIN_MS
+
+                Log.d(TAG, "✅ Token renovado correctamente. expiresIn=${expiresIn}s")
+
+                token
             }
+
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Excepción al obtener el token", e)
+            Log.e(TAG, "❌ Excepción obteniendo token", e)
+            accessToken = null
+            expiresAtEpochMs = 0L
             null
         }
     }

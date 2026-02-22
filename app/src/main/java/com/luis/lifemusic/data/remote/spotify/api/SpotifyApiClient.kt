@@ -5,91 +5,99 @@ import com.luis.lifemusic.data.remote.auth.SpotifyTokenManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Cliente de red para la API de Spotify.
- * Es un singleton y se encarga de la autenticación y configuración de Retrofit.
+ * ============================================================
+ * SPOTIFY API CLIENT
+ * ============================================================
+ *
+ * 🎯 RESPONSABILIDAD:
+ * - Configurar Retrofit.
+ * - Configurar OkHttp.
+ * - Añadir automáticamente el token Bearer en cada request.
+ *
+ * 🔐 AUTENTICACIÓN:
+ * - Usa SpotifyTokenManager.
+ * - Añade header Authorization: Bearer <token>.
+ *
+ * 🧠 DISEÑO:
+ * - Singleton (object).
+ * - Inicialización lazy.
+ * - Interceptor centralizado.
+ *
+ * 👉 El resto de la app SOLO usa:
+ *    SpotifyApiClient.apiService
  */
 object SpotifyApiClient {
 
     private const val TAG = "SpotifyApiClient"
     private const val BASE_URL = "https://api.spotify.com/v1/"
 
-    // Variable para saber si ya se inicializó
-    private var isInitialized = false
+    /**
+     * Interceptor que:
+     * 1️⃣ Obtiene token válido
+     * 2️⃣ Añade Authorization Bearer
+     * 3️⃣ Añade Accept JSON
+     */
+    private val authInterceptor = Interceptor { chain ->
 
-    // Inicialización tardía (lazy) de los componentes
-    private val authInterceptor by lazy {
-        Log.d(TAG, "⚙️ Creando authInterceptor por primera vez")
-        Interceptor { chain ->
-            val original: Request = chain.request()
-            Log.d(TAG, "🔑 Interceptor ejecutándose para: ${original.url}")
+        val originalRequest = chain.request()
 
-            val token = try {
-                runBlocking {
-                    SpotifyTokenManager.getValidToken()
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error obteniendo token", e)
-                null
-            }
-
-            if (token.isNullOrBlank()) {
-                Log.e(TAG, "❌ TOKEN ES NULO O VACÍO")
-            } else {
-                Log.d(TAG, "✅ Token OK: ${token.take(15)}...")
-            }
-
-            val newRequest = original.newBuilder().apply {
-                if (!token.isNullOrBlank()) {
-                    header("Authorization", "Bearer $token")
-                }
-                header("Accept", "application/json")
-            }.build()
-
-            chain.proceed(newRequest)
+        // ⚠️ runBlocking aquí es seguro porque el interceptor ya corre en hilo IO
+        val token = runBlocking {
+            SpotifyTokenManager.getValidToken()
         }
+
+        val newRequest = originalRequest.newBuilder().apply {
+
+            if (!token.isNullOrBlank()) {
+                header("Authorization", "Bearer $token")
+            }
+
+            header("Accept", "application/json")
+
+        }.build()
+
+        Log.d(TAG, "➡️ ${newRequest.method} ${newRequest.url}")
+
+        chain.proceed(newRequest)
     }
 
-    private val okHttpClient by lazy {
-        Log.d(TAG, "⚙️ Creando OkHttpClient")
+    /**
+     * Cliente HTTP configurado
+     */
+    private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
-            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+//            .addInterceptor(
+//                HttpLoggingInterceptor()
+//                    .setLevel(HttpLoggingInterceptor.Level.BASIC)
+                    .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
+            )
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .build()
     }
 
-    private val retrofit by lazy {
-        Log.d(TAG, "⚙️ Creando Retrofit")
+    /**
+     * Instancia Retrofit
+     */
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
             .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
 
-    val apiService: SpotifyApiService by lazy {
-        Log.d(TAG, "⚙️ Creando apiService")
-        retrofit.create(SpotifyApiService::class.java)
-    }
-
     /**
-     * Método para forzar la inicialización temprana
+     * Servicio principal de la API de Spotify
      */
-    fun initialize() {
-        if (!isInitialized) {
-            Log.d(TAG, "🚀 Inicializando SpotifyApiClient...")
-            // Acceder a las propiedades lazy para forzar su creación
-            val test = apiService
-            isInitialized = true
-            Log.d(TAG, "✅ SpotifyApiClient inicializado correctamente")
-        }
+    val apiService: SpotifyApiService by lazy {
+        retrofit.create(SpotifyApiService::class.java)
     }
 }

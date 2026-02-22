@@ -25,6 +25,5 @@ object SpotifyCredentials {
      */
     val hasValidCredentials: Boolean =
         CLIENT_ID.isNotBlank() &&
-                CLIENT_SECRET.isNotBlank() &&
-                CLIENT_ID != "your_client_id_here"
+                CLIENT_SECRET.isNotBlank()
 }

@@ -22,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.luis.lifemusic.component.MainScaffold
 import com.luis.lifemusic.component.SongListItem
-import com.luis.lifemusic.data.localsed.LocalSeedSong // Importación añadida
+import com.luis.lifemusic.data.localsed.LocalSeedSong
 import com.luis.lifemusic.data.localsed.localSeedSongs
 import com.luis.lifemusic.navigation.NavigationDestination
 import com.luis.lifemusic.ui.theme.LifeMusicTheme
@@ -36,13 +36,18 @@ object ListDestination : NavigationDestination {
 }
 
 /**
- * ListPage (UI pura), ahora muestra la lista de favoritos del usuario.
+ * ListPage (UI pura), muestra la lista de favoritos del usuario.
+ *
+ * ✅ OFFLINE:
+ * - Si faltan favoritos remotos (porque no hay conexión), mostramos un aviso
+ *   con missingRemoteCount, sin ocultar los locales.
  */
 @Composable
 fun ListPage(
     favoriteSongs: List<LocalSeedSong>,
     isLoading: Boolean,
     errorMessage: String?,
+    missingRemoteCount: Int, // ✅ NUEVO
     onFavoriteClick: (String) -> Unit, // spotifyId
     onNavigateToDetail: (String) -> Unit, // spotifyId
     onBackClick: () -> Unit = {}
@@ -53,7 +58,12 @@ fun ListPage(
     ) { padding ->
 
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
             return@MainScaffold
@@ -61,39 +71,61 @@ fun ListPage(
 
         if (!errorMessage.isNullOrBlank()) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.height(12.dp))
-                Button(onClick = { /* onRetry podría necesitarse de nuevo */ }) { Text("Reintentar") }
+                Button(onClick = { /* onRetry si lo implementas */ }) { Text("Reintentar") }
             }
             return@MainScaffold
         }
-        
-        if (favoriteSongs.isEmpty()) {
-             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+
+        if (favoriteSongs.isEmpty() && missingRemoteCount == 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("Aún no tienes canciones favoritas.", textAlign = TextAlign.Center)
             }
             return@MainScaffold
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
         ) {
-            items(favoriteSongs, key = { it.spotifyId }) { song ->
-                SongListItem(
-                    song = song,
-                    isFavorite = true, 
-                    onItemClick = { onNavigateToDetail(song.spotifyId) },
-                    onFavoriteClick = { onFavoriteClick(song.spotifyId) }
+            if (missingRemoteCount > 0) {
+                Text(
+                    text = "Tienes $missingRemoteCount favoritos añadidos desde internet, pero ahora no hay conexión para mostrarlos.",
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
+            }
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(favoriteSongs, key = { it.spotifyId }) { song ->
+                    SongListItem(
+                        song = song,
+                        isFavorite = true,
+                        onItemClick = { onNavigateToDetail(song.spotifyId) },
+                        onFavoriteClick = { onFavoriteClick(song.spotifyId) }
+                    )
+                }
             }
         }
     }
 }
-
 
 @Preview(showBackground = true, name = "ListPage - Light Mode")
 @Composable
@@ -103,6 +135,7 @@ fun ListPagePreviewLight() {
             favoriteSongs = localSeedSongs.take(5),
             isLoading = false,
             errorMessage = null,
+            missingRemoteCount = 2,
             onFavoriteClick = {},
             onNavigateToDetail = {},
             onBackClick = {}
@@ -118,6 +151,7 @@ fun ListPagePreviewEmpty() {
             favoriteSongs = emptyList(),
             isLoading = false,
             errorMessage = null,
+            missingRemoteCount = 0,
             onFavoriteClick = {},
             onNavigateToDetail = {},
             onBackClick = {}
