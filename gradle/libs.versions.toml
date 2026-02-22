@@ -12,6 +12,10 @@ materialIconsExtended = "1.6.7"
 navigationRuntimeKtx = "2.9.7"
 navigationCompose = "2.9.7"
 
+lifecycle = "2.8.0"
+
+
+
 # Room Database (persistencia local con SQLite + anotaciones)
 roomRuntime = "2.7.1"  # Room Database
 # -------------------------------
@@ -21,7 +25,18 @@ roomRuntime = "2.7.1"  # Room Database
 # y posibles preferencias simples (tema oscuro, flags, etc.)
 datastorePreferences = "1.1.1"
 
+# 🎥 ANDROIDX CAMERA CORE: VERSIÓN ESTABLE DE LA API DE CÁMARA
+# - Incluye core, camera2, lifecycle y view (todas usan misma versión)
+# - v1.5.x: Última versión estable con soporte para múltiples cámaras
+# - Compatible con Android 5.0+ (API 21+)
+cameraCore = "1.5.3"
 
+
+# 🔐 ACCOMPANIST PERMISSIONS: MANEJO DE PERMISOS EN COMPOSE
+# - v0.37.x: Versión compatible con Compose 2025+
+# - Sigue el versionado de Accompanist (sincronizado con Compose)
+# - Incluye rememberPermissionState y PermissionRequired
+accompanistPermissions = "0.37.3"
 
 # ============================================================
 # VERSIONES DE LIBRERÍAS (centralizadas)
@@ -30,9 +45,15 @@ okhttp = "4.11.0"              # Cliente HTTP
 retrofit = "2.9.0"              # Cliente REST
 
 
-coilCompose = "2.7.0"           # Carga y renderizado eficiente de imágenes en Jetpack Compose
+coilCompose = "2.7.0"
+runtimeSaveable = "1.10.3"           # Carga y renderizado eficiente de imágenes en Jetpack Compose
 
 [libraries]
+accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
+androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cameraCore" }
+androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCore" }
+androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "cameraCore" }
+androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCore" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -87,7 +108,9 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 # - MUY IMPORTANTE para depurar
 # - Muestra en Logcat todo el tráfico de red
 logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+androidx-compose-runtime-saveable = { group = "androidx.compose.runtime", name = "runtime-saveable", version.ref = "runtimeSaveable" }
 
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

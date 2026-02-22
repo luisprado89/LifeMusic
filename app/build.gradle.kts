@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.runtime.saveable)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -109,4 +110,32 @@ dependencies {
 // - Compatible con Compose y Kotlin multiplatform
 // - Soporta decodificación, caché, animaciones y transformación de imágenes
     implementation(libs.coil.compose)
+
+// 🎥 ANDROIDX CAMERA CORE: API PRINCIPAL DE CÁMARA
+// - Funcionalidades básicas: captura de imágenes, preview, análisis de frames
+// - Base necesaria para cualquier funcionalidad de cámara
+    implementation(libs.androidx.camera.core)
+
+// 📸 ANDROIDX CAMERA2: IMPLEMENTACIÓN ESPECÍFICA PARA API CAMERA2
+// - Adaptador entre CameraX y el framework Camera2 de Android
+// - Permite acceso a características avanzadas de cámara
+    implementation(libs.androidx.camera.camera2)
+
+// 🔄 ANDROIDX CAMERA LIFECYCLE: INTEGRACIÓN CON CICLO DE VIDA
+// - Vincula automáticamente la cámara al lifecycle (Activity/Fragment)
+// - Libera recursos cuando la app pasa a segundo plano
+    implementation(libs.androidx.camera.lifecycle)
+
+// 👁️ ANDROIDX CAMERA VIEW: COMPONENTES UI PRE-CONSTRUIDOS
+// - PreviewView: superficie para mostrar el preview de cámara
+// - Facilita la integración de cámara en XML/Compose
+    implementation(libs.androidx.camera.view)
+
+// 🔐 ACCOMPANIST PERMISSIONS: MANEJO DE PERMISOS EN COMPOSE
+// - API declarativa para solicitar permisos (cámara, almacenamiento, etc.)
+// - Gestiona automáticamente el estado y la UI de permisos
+// - Parte de la suite Accompanist de Google
+    implementation(libs.accompanist.permissions)
+
+    implementation(libs.androidx.lifecycle.runtime.compose)
 }

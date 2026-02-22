@@ -5,6 +5,12 @@
     <!-- Permiso para acceder a Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- 📸 Cámara: Capturar fotos para perfil -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- 📱 La app funciona sin cámara (no filtrar en Play Store) -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <application
         android:name=".LifeMusicApplication"
         android:allowBackup="true"
@@ -12,7 +18,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android.roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LifeMusic">
         <activity
