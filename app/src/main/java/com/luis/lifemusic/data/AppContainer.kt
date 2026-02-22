@@ -5,6 +5,11 @@ import androidx.room.Room
 import com.luis.lifemusic.data.local.LifeMusicDatabase
 import com.luis.lifemusic.data.remote.spotify.api.SpotifyApiClient
 import com.luis.lifemusic.data.repository.*
+import com.luis.lifemusic.data.seed.DemoDataSeeder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * AppContainer = contenedor manual de dependencias (sin Hilt/Koin).
@@ -24,6 +29,16 @@ class AppContainer(appContext: Context) {
      * 👉 Evita fugas de memoria y es seguro para singletons.
      */
     private val applicationContext: Context = appContext.applicationContext
+
+    // ------------------------------------------------------------
+    // 0) SCOPE DE APLICACIÓN (para tareas "fire-and-forget")
+    /**
+     * Scope de aplicación para tareas "one-shot" como seeds.
+     * - SupervisorJob para que si falla el seed no tumbe el resto.
+     * - Dispatchers.IO porque tocamos Room.
+     */
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
 
     // ------------------------------------------------------------
     // 1) ROOM (Base de datos local)
@@ -73,11 +88,26 @@ class AppContainer(appContext: Context) {
         SpotifyRepository(apiService = SpotifyApiClient.apiService)
     }
 
+// ------------------------------------------------------------
+    // 4) DEMO SEED (2 usuarios + 6 favoritos)
     // ------------------------------------------------------------
-    // 4) RETROFIT (futuro: otros endpoints / otras APIs)
-    // ------------------------------------------------------------
-    /**
-     * Aquí irán otros clientes Retrofit / servicios / repos remotos
-     * si añades más APIs además de Spotify.
-     */
+
+    init {
+        /**
+         * Se ejecuta en segundo plano al crear el contenedor.
+         * ✅ No bloquea el arranque de la app.
+         * ✅ Idempotente: no duplica usuarios ni favoritos.
+         */
+        appScope.launch {
+            try {
+                DemoDataSeeder(
+                    userDao = userDao,
+                    favoriteDao = favoriteDao
+                ).seedIfNeeded()
+            } catch (_: Exception) {
+                // Si algo falla en el seed, no queremos romper la app.
+                // En un proyecto real loggearíamos el error.
+            }
+        }
+    }
 }

@@ -59,4 +59,5 @@ interface UserRepository {
      * Guarda la foto del perfil como URI string (content://...) o null.
      */
     suspend fun updatePhoto(userId: Long, photoUri: String?)
+
 }

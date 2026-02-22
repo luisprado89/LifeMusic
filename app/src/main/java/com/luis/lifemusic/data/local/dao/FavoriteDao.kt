@@ -39,4 +39,11 @@ interface FavoriteDao {
      */
     @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE user_id = :userId AND song_spotify_id = :songSpotifyId)")
     suspend fun isFavorite(userId: Long, songSpotifyId: String): Boolean
+
+    /**
+     * Lectura puntual (sin Flow) para seeds.
+     * Devuelve los ids favoritos actuales del usuario.
+     */
+    @Query("SELECT song_spotify_id FROM favorites WHERE user_id = :userId")
+    suspend fun getFavoriteSongIdsOnceInternal(userId: Long): List<String>
 }
