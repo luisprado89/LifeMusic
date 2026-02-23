@@ -30,18 +30,13 @@ import com.luis.lifemusic.ui.AppViewModelProvider
 fun ProfileRoute(
     onBackClick: () -> Unit,
     onSessionExpired: () -> Unit,
+    onNavigateToCamera: () -> Unit,
     viewModel: ProfileViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    /**
-     * Observamos cambios en el estado de sesión.
-     * Si la sesión expira, notificamos al NavHost.
-     */
     LaunchedEffect(uiState.hasActiveSession) {
-        if (!uiState.hasActiveSession) {
-            onSessionExpired()
-        }
+        if (!uiState.hasActiveSession) onSessionExpired()
     }
 
     ProfilePage(
@@ -49,6 +44,7 @@ fun ProfileRoute(
         email = uiState.email,
         birthDate = uiState.birthDate,
         verified = uiState.verified,
+        photoUri = uiState.photoUri,
         isEditing = uiState.isEditing,
         isLoading = uiState.isLoading,
         errorMessage = uiState.errorMessage,
@@ -57,6 +53,7 @@ fun ProfileRoute(
         onEditClick = viewModel::onEditClick,
         onCancelEdit = viewModel::onCancelEdit,
         onSaveChanges = viewModel::onSaveChanges,
+        onChangePhotoClick = onNavigateToCamera,
         onLogoutClick = viewModel::onLogoutClick,
         onBackClick = onBackClick
     )

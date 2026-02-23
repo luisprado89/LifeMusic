@@ -6,6 +6,7 @@ import com.luis.lifemusic.data.localsed.localSeedSongs
 import com.luis.lifemusic.data.remote.spotify.api.SpotifyApiService
 import com.luis.lifemusic.data.remote.spotify.model.TrackDto
 import retrofit2.HttpException
+import kotlin.math.absoluteValue
 
 /**
  * ============================================================
@@ -17,15 +18,9 @@ import retrofit2.HttpException
  * - Evitar duplicados usando spotifyId REAL.
  * - Si falla Spotify o no hay resultados, devolvemos solo local (fallback).
  *
- * ✅ ESTRATEGIA ROBUSTA (tu caso real):
- * - En tu entorno Spotify devuelve 400 "Invalid limit" para 20/50.
- * - Solución: usar limit FIJO = 10 y paginar con offset (0,10,20,30...).
- *
- * ✅ IMPORTANTE:
- * - NO usamos "genre:" porque tu modelo local no trabaja con géneros.
- * - Usamos una query por PALABRAS CLAVE (keywords) basada en artistas favoritos.
- *   (Ej: "Nirvana U2 Michael Jackson")
- * - Esto es mucho más compatible que: artist:"X" OR artist:"Y" ...
+ * ✅ CORRECCIÓN IMPORTANTE:
+ * - El endpoint "tracks/{id}" NO devuelve popularity con Client Credentials.
+ * - Por eso generamos un valor coherente en el mapper.
  */
 class SpotifyRepository(
     private val apiService: SpotifyApiService
@@ -35,10 +30,10 @@ class SpotifyRepository(
         private const val TAG = "SpotifyRepository"
         private const val MARKET_ES = "ES"
 
-        // Spotify debería aceptar 1..50, pero a ti te falla con 20 y funciona con 10.
+        // Límite fijo de 10 para evitar error "Invalid limit"
         private val LIMITS = listOf(10)
 
-        // Paginación (offset debe ser múltiplo del limit). Con limit=10 => 0,10,20,30,40...
+        // Paginación: offset 0,10,20,30,40
         private val OFFSETS = listOf(0, 10, 20, 30, 40)
 
         private const val FALLBACK_QUERY = "music"
@@ -51,10 +46,6 @@ class SpotifyRepository(
 
     /**
      * Devuelve catálogo combinado (local + remoto).
-     * Estrategia:
-     * 1) Intentar query "estricta" (la que venga, normalmente con artist:)
-     * 2) Si total=0 => intentar query "simple" (sin artist:)
-     * 3) Si sigue 0 => fallback "music"
      */
     suspend fun getDiscoverySongs(query: String): DiscoveryResult {
         val strictQuery = query.trim().ifBlank { FALLBACK_QUERY }
@@ -114,7 +105,6 @@ class SpotifyRepository(
                     val body = e.response()?.errorBody()?.string().orEmpty()
                     Log.e(TAG, "HTTP ${e.code()} search q='$q' limit=$limit: $body")
 
-                    // Si por lo que sea vuelve a dar Invalid limit, no merece seguir con otros offsets
                     val invalidLimit = e.code() == 400 && body.contains("Invalid limit", ignoreCase = true)
                     if (!invalidLimit) break
                 } catch (e: Exception) {
@@ -136,7 +126,12 @@ class SpotifyRepository(
      */
     suspend fun getTrackDetail(trackId: String): LocalSeedSong? {
         return try {
-            apiService.getTrackById(trackId, market = MARKET_ES).toLocalSeedSong()
+            val response = apiService.getTrackById(trackId, market = MARKET_ES)
+
+            // Log para depuración
+            Log.d(TAG, "getTrackDetail: ${response.name} - popularity=${response.popularity}")
+
+            response.toLocalSeedSong()
         } catch (e: Exception) {
             Log.e(TAG, "No se pudo cargar detalle de trackId=$trackId", e)
             null
@@ -171,7 +166,25 @@ class SpotifyRepository(
     }
 }
 
+/**
+ * ============================================================
+ * MAPPER CORREGIDO
+ * ============================================================
+ *
+ * 🔥 IMPORTANTE:
+ * - El endpoint "tracks/{id}" NO devuelve popularity con Client Credentials.
+ * - Por eso generamos un valor coherente basado en el ID.
+ */
 private fun TrackDto.toLocalSeedSong(): LocalSeedSong {
+    // Si popularity es 0 (por Client Credentials), generamos un valor coherente
+    val finalPopularity = if (popularity > 0) {
+        popularity
+    } else {
+        // Usamos el hash del ID para tener un valor consistente
+        // Rango 30-99 para que nunca sea 0
+        (id.hashCode().absoluteValue % 70) + 30
+    }
+
     return LocalSeedSong(
         spotifyId = id,
         imageRes = 0,
@@ -180,7 +193,7 @@ private fun TrackDto.toLocalSeedSong(): LocalSeedSong {
         artistIds = artists.map { it.id },
         albumName = album.name,
         durationMs = durationMs,
-        popularity = popularity,
+        popularity = finalPopularity,  // ✅ Nunca será 0
         releaseDate = album.releaseDate,
         imageUrl = album.images.firstOrNull()?.url
     )

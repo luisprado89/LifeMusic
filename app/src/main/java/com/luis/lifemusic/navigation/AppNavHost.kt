@@ -1,12 +1,16 @@
 package com.luis.lifemusic.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.luis.lifemusic.camera.CameraScreen
+import com.luis.lifemusic.page.CameraDestination
 import com.luis.lifemusic.page.DetailDestination
 import com.luis.lifemusic.page.HomeDestination
 import com.luis.lifemusic.page.ListDestination
@@ -14,11 +18,13 @@ import com.luis.lifemusic.page.LoginDestination
 import com.luis.lifemusic.page.ProfileDestination
 import com.luis.lifemusic.page.RecoverDestination
 import com.luis.lifemusic.page.RegisterDestination
+import com.luis.lifemusic.ui.AppViewModelProvider
 import com.luis.lifemusic.ui.detail.DetailRoute
 import com.luis.lifemusic.ui.home.HomeRoute
 import com.luis.lifemusic.ui.list.ListRoute
 import com.luis.lifemusic.ui.login.LoginRoute
 import com.luis.lifemusic.ui.profile.ProfileRoute
+import com.luis.lifemusic.ui.profile.ProfileViewModel
 import com.luis.lifemusic.ui.recover.RecoverRoute
 import com.luis.lifemusic.ui.register.RegisterRoute
 
@@ -133,6 +139,24 @@ fun AppNavHost(
                         popUpTo(0) { inclusive = true }
                         launchSingleTop = true
                     }
+                },
+                onNavigateToCamera = { navController.navigate(CameraDestination.route) }
+            )
+        }
+
+        // ✅ Cámara (usa el MISMO ProfileViewModel para guardar photoUri)
+        composable(CameraDestination.route) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(ProfileDestination.route)
+            }
+            val profileViewModel: ProfileViewModel =
+                viewModel(parentEntry, factory = AppViewModelProvider.Factory)
+
+            CameraScreen(
+                onBackClick = { navController.popBackStack() },
+                onPhotoCaptured = { uriString ->
+                    profileViewModel.onPhotoCaptured(uriString)
+                    navController.popBackStack()
                 }
             )
         }

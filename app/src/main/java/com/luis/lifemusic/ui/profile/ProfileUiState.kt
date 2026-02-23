@@ -16,6 +16,7 @@ data class ProfileUiState(
     val email: String = "",
     val birthDate: Long = 0L,
     val verified: Boolean = false,
+    val photoUri: String? = null,
     val isEditing: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

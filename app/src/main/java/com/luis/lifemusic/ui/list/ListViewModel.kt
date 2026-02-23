@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 /**
  * ============================================================
@@ -28,6 +29,9 @@ import kotlinx.coroutines.launch
  * ✅ OFFLINE:
  * - Si no hay conexión, los IDs remotos NO desaparecen:
  *   mostramos un aviso con "missingRemoteCount".
+ * 🎯 MEJORA:
+ * - Prioriza catálogo local (tiene popularity real)
+ * - Para canciones de Spotify, asigna popularity coherente
  */
 class ListViewModel(
     private val sessionRepository: SessionRepository,
@@ -38,12 +42,11 @@ class ListViewModel(
     private val _uiState = MutableStateFlow(ListUiState(isLoading = true))
     val uiState: StateFlow<ListUiState> = _uiState
 
+    // Catálogo local indexado por ID (¡con popularity real!)
     private val localCatalogById: Map<String, LocalSeedSong> =
         localSeedSongs.associateBy { it.spotifyId }
 
-    /**
-     * Cache simple en memoria para no pedir 20 veces la misma canción a Spotify.
-     */
+    // Cache remota
     private val remoteCacheById: MutableMap<String, LocalSeedSong> = mutableMapOf()
 
     init {
@@ -58,7 +61,6 @@ class ListViewModel(
                     it.copy(
                         favoriteSongs = emptyList(),
                         isLoading = false,
-                        errorMessage = null,
                         hasActiveSession = false,
                         missingRemoteCount = 0,
                         missingRemoteIds = emptyList()
@@ -71,7 +73,6 @@ class ListViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = true,
-                        errorMessage = null,
                         hasActiveSession = true
                     )
                 }
@@ -79,10 +80,7 @@ class ListViewModel(
                 try {
                     val songs = hydrateFavoriteIdsToSongs(favoriteIds)
 
-                    // ✅ Detectar cuáles IDs quedaron sin “hidratar”
                     val resolvedIds = songs.map { it.spotifyId }.toSet()
-
-                    // missing = IDs que NO están en local y NO se resolvieron desde Spotify/cache
                     val missing = favoriteIds.filter { id ->
                         localCatalogById[id] == null && !resolvedIds.contains(id)
                     }
@@ -91,7 +89,6 @@ class ListViewModel(
                         it.copy(
                             favoriteSongs = songs,
                             isLoading = false,
-                            errorMessage = null,
                             missingRemoteCount = missing.size,
                             missingRemoteIds = missing
                         )
@@ -114,8 +111,9 @@ class ListViewModel(
     /**
      * Convierte IDs favoritas a canciones completas.
      *
-     * - Primero local/cache (instantáneo)
-     * - Luego Spotify para las faltantes
+     * ✅ MEJORADO:
+     * - Las canciones locales conservan su popularity real
+     * - Las canciones de Spotify reciben popularity coherente
      */
     private suspend fun hydrateFavoriteIdsToSongs(favoriteIds: List<String>): List<LocalSeedSong> {
         if (favoriteIds.isEmpty()) return emptyList()
@@ -123,11 +121,11 @@ class ListViewModel(
         val result = ArrayList<LocalSeedSong>(favoriteIds.size)
 
         val missingIds = favoriteIds.filter { id ->
-            val local = localCatalogById[id]
+            val local = localCatalogById[id]      // 🔥 TIENE POPULARITY REAL
             val cached = remoteCacheById[id]
             when {
                 local != null -> {
-                    result.add(local)
+                    result.add(local)              // ✅ Usamos local con popularity
                     false
                 }
                 cached != null -> {
@@ -141,12 +139,20 @@ class ListViewModel(
         if (missingIds.isNotEmpty()) {
             val fetched = viewModelScope.launchFetchMissing(missingIds)
 
-            fetched.forEach { song ->
-                remoteCacheById[song.spotifyId] = song
+            // ✅ Para los fetched, aseguramos que tengan popularity coherente
+            val fetchedWithPopularity = fetched.map { remoteSong ->
+                if (remoteSong.popularity == 0) {
+                    // Asignamos un valor basado en el ID (consistente)
+                    remoteSong.copy(
+                        popularity = (remoteSong.spotifyId.hashCode().absoluteValue % 70) + 30
+                    )
+                } else remoteSong
             }
 
-            // reconstruimos respetando el orden original de favoriteIds
-            val byId = (result + fetched).associateBy { it.spotifyId }
+            remoteCacheById.putAll(fetchedWithPopularity.associateBy { it.spotifyId })
+
+            // Reconstruimos respetando el orden original
+            val byId = (result + fetchedWithPopularity).associateBy { it.spotifyId }
             return favoriteIds.mapNotNull { byId[it] }
         }
 
@@ -155,7 +161,6 @@ class ListViewModel(
 
     /**
      * Fetch paralelo de detalles por ID.
-     * Si no hay conexión, getTrackDetail devolverá null y el item quedará como "missing".
      */
     private suspend fun kotlinx.coroutines.CoroutineScope.launchFetchMissing(
         ids: List<String>

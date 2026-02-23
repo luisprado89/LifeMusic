@@ -30,19 +30,14 @@ data class ListUiState(
     val hasActiveSession: Boolean = true,
 
     /**
-     * ✅ NUEVO:
      * Cantidad de favoritos que están guardados en Room (IDs),
      * pero no se pudieron “hidratar” a canciones completas porque
      * no existen en local y no se pudo obtener detalle desde Spotify.
-     *
-     * Ejemplo típico: el usuario añadió favoritos desde internet y luego perdió conexión.
      */
     val missingRemoteCount: Int = 0,
 
     /**
-     * ✅ NUEVO:
-     * Lista de IDs remotos que faltan (por si luego quieres mostrar un botón "Reintentar"
-     * o implementar un placeholder por item).
+     * Lista de IDs remotos que faltan.
      */
     val missingRemoteIds: List<String> = emptyList()
 )

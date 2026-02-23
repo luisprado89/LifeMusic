@@ -15,7 +15,6 @@ data class DetailUiState(
 
     /**
      * Indica si la canción actual es favorita para el usuario logueado.
-     * Permite al botón de favorito saber si debe mostrar "Añadir" o "Quitar".
      */
     val isFavorite: Boolean = false,
 

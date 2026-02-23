@@ -1,11 +1,14 @@
 package com.luis.lifemusic.page
 
 import android.content.res.Configuration
+import coil.compose.AsyncImage
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Email
@@ -68,6 +71,7 @@ fun ProfilePage(
     email: String,
     birthDate: Long,
     verified: Boolean,
+    photoUri: String?,
     isEditing: Boolean,
     isLoading: Boolean,
     errorMessage: String?,
@@ -76,6 +80,7 @@ fun ProfilePage(
     onEditClick: () -> Unit,
     onCancelEdit: () -> Unit,
     onSaveChanges: () -> Unit,
+    onChangePhotoClick: () -> Unit,
     onBackClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
@@ -86,52 +91,50 @@ fun ProfilePage(
 
         if (isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            ) { CircularProgressIndicator() }
             return@MainScaffold
         }
 
         val usernameVisual = email.substringBefore("@").ifBlank { "usuario" }
-
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(24.dp),
+                .padding(24.dp)
+                .verticalScroll(scrollState)
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
 
-            // Avatar circular
+            // Avatar: si hay foto -> AsyncImage, si no -> inicial
             Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF53E88B)),
+                modifier = Modifier.size(120.dp).clip(CircleShape).background(Color(0xFF53E88B)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = name.firstOrNull()?.uppercase() ?: "U",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 48.sp,
-                    color = Color.Black.copy(alpha = 0.6f)
-                )
+                if (!photoUri.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUri,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                    )
+                } else {
+                    Text(
+                        text = name.firstOrNull()?.uppercase() ?: "U",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 48.sp,
+                        color = Color.Black.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(text = name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-
-            Text(
-                text = usernameVisual,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = usernameVisual, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -149,63 +152,50 @@ fun ProfilePage(
 
             if (!isEditing) {
 
-                // ===== MODO VISUALIZACIÓN =====
-
                 ProfileInfoItem(Icons.Default.Person, "Nombre completo", name)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 ProfileInfoItem(Icons.Default.Email, "Correo electrónico", email)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ProfileInfoItem(
-                    Icons.Default.CalendarMonth,
-                    "Fecha de nacimiento",
-                    birthDate.toBirthDateText()
-                )
+                ProfileInfoItem(Icons.Default.CalendarMonth, "Fecha de nacimiento", birthDate.toBirthDateText())
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ProfileInfoItem(
-                    Icons.Default.MarkEmailRead,
-                    "Correo verificado",
-                    if (verified) "Sí" else "No"
-                )
+                ProfileInfoItem(Icons.Default.MarkEmailRead, "Correo verificado", if (verified) "Sí" else "No")
 
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
                     onClick = onEditClick,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(55.dp)
-                ) {
-                    Text("✏️ Editar perfil", fontWeight = FontWeight.SemiBold)
-                }
+                    modifier = Modifier.fillMaxWidth().height(55.dp)
+                ) { Text("✏️ Editar perfil", fontWeight = FontWeight.SemiBold) }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedButton(
                     onClick = onLogoutClick,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(55.dp),
+                    modifier = Modifier.fillMaxWidth().height(55.dp),
                     border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                ) {
-                    Text("Cerrar sesión", fontWeight = FontWeight.SemiBold)
-                }
+                ) { Text("Cerrar sesión", fontWeight = FontWeight.SemiBold) }
 
             } else {
 
-                // ===== MODO EDICIÓN =====
+                // ✅ botón cámara solo en edición
+                OutlinedButton(
+                    onClick = onChangePhotoClick,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(55.dp)
+                ) { Text("📸 Cambiar foto", fontWeight = FontWeight.SemiBold) }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = name,
                     onValueChange = onNameChange,
                     label = { Text("Nombre completo") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null)
-                    },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -215,65 +205,38 @@ fun ProfilePage(
                     value = email,
                     onValueChange = onEmailChange,
                     label = { Text("Correo electrónico") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = null)
-                    },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                ProfileInfoItem(
-                    Icons.Default.CalendarMonth,
-                    "Fecha de nacimiento",
-                    birthDate.toBirthDateText()
-                )
-
+                ProfileInfoItem(Icons.Default.CalendarMonth, "Fecha de nacimiento", birthDate.toBirthDateText())
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ProfileInfoItem(
-                    Icons.Default.MarkEmailRead,
-                    "Correo verificado",
-                    if (verified) "Sí" else "No"
-                )
-
+                ProfileInfoItem(Icons.Default.MarkEmailRead, "Correo verificado", if (verified) "Sí" else "No")
                 Spacer(modifier = Modifier.height(40.dp))
 
                 Button(
                     onClick = onSaveChanges,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(55.dp)
-                ) {
-                    Text("💾 Guardar cambios", fontWeight = FontWeight.SemiBold)
-                }
+                    modifier = Modifier.fillMaxWidth().height(55.dp)
+                ) { Text("💾 Guardar cambios", fontWeight = FontWeight.SemiBold) }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedButton(
                     onClick = onCancelEdit,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(55.dp)
-                ) {
-                    Text("Cancelar", fontWeight = FontWeight.SemiBold)
-                }
+                    modifier = Modifier.fillMaxWidth().height(55.dp)
+                ) { Text("Cancelar", fontWeight = FontWeight.SemiBold) }
             }
         }
     }
 }
 
-/**
- * Item reutilizable del perfil.
- */
 @Composable
-fun ProfileInfoItem(
-    icon: ImageVector,
-    label: String,
-    value: String
-) {
+fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
     Surface(
         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f),
         shape = RoundedCornerShape(12.dp),
@@ -283,28 +246,15 @@ fun ProfileInfoItem(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(12.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Icon(imageVector = icon, contentDescription = label, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = value,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                Text(text = label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
 }
-
 @Preview(showBackground = true, name = "Profile - Light")
 @Composable
 fun ProfilePreviewLight() {
@@ -314,6 +264,7 @@ fun ProfilePreviewLight() {
             email = "luis@lifemusic.com",
             birthDate = 946684800000,
             verified = true,
+            photoUri = null,
             isEditing = false,
             isLoading = false,
             errorMessage = null,
@@ -321,7 +272,10 @@ fun ProfilePreviewLight() {
             onEmailChange = {},
             onEditClick = {},
             onCancelEdit = {},
-            onSaveChanges = {}
+            onSaveChanges = {},
+        onChangePhotoClick = {},
+        onBackClick = {},
+        onLogoutClick = {}
         )
     }
 }
@@ -339,6 +293,7 @@ fun ProfilePreviewDark() {
             email = "luis@lifemusic.com",
             birthDate = 946684800000,
             verified = true,
+            photoUri = null,
             isEditing = false,
             isLoading = false,
             errorMessage = null,
@@ -346,7 +301,10 @@ fun ProfilePreviewDark() {
             onEmailChange = {},
             onEditClick = {},
             onCancelEdit = {},
-            onSaveChanges = {}
+            onSaveChanges = {},
+            onChangePhotoClick = {},
+            onBackClick = {},
+            onLogoutClick = {}
         )
     }
 }

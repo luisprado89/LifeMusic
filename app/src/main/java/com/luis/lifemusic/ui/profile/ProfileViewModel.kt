@@ -34,67 +34,39 @@ import kotlinx.coroutines.launch
  * - El ViewModel expone estado (ProfileUiState) y acciones (funciones públicas).
  * - La navegación (volver a Login) se gestiona en Route/NavHost mediante hasActiveSession.
  */
+
 class ProfileViewModel(
     private val userRepository: UserRepository,
     private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
-    /** Estado interno mutable (única fuente de verdad de la pantalla). */
     private val _uiState = MutableStateFlow(ProfileUiState(isLoading = true))
-
-    /** Estado público inmutable observado desde ProfileRoute. */
     val uiState: StateFlow<ProfileUiState> = _uiState
 
-    /** UserId de la sesión actual; se actualiza observando DataStore. */
     private var currentUserId: Long? = null
-
-    /**
-     * Job de observación del usuario:
-     * - Cancelamos y recreamos cuando cambia el userId.
-     * - Evita múltiples collectors simultáneos sobre Room.
-     */
     private var observeUserJob: Job? = null
 
     init {
         observeSession()
     }
 
-    /**
-     * Observa DataStore para saber si hay sesión activa y, si existe,
-     * suscribirse al usuario en Room.
-     *
-     * Reglas:
-     * - userId == null  -> sesión inválida (guard) -> hasActiveSession = false
-     * - userId != null  -> sesión válida -> observar el usuario de Room
-     */
     private fun observeSession() {
         viewModelScope.launch {
             sessionRepository.sessionUserId.collectLatest { userId ->
                 currentUserId = userId
 
                 if (userId == null) {
-                    // Sesión perdida: paramos observación y marcamos guard a false.
                     observeUserJob?.cancel()
-                    _uiState.update {
-                        it.copy(
-                            hasActiveSession = false,
-                            isLoading = false
-                        )
-                    }
+                    _uiState.update { it.copy(hasActiveSession = false, isLoading = false) }
                     return@collectLatest
                 }
 
-                // Sesión válida: activamos guard y cargamos el usuario desde Room.
                 _uiState.update { it.copy(hasActiveSession = true, isLoading = true) }
                 observeUser(userId)
             }
         }
     }
 
-    /**
-     * Observa en tiempo real el usuario actual desde Room.
-     * Así, si el usuario cambia (updateProfile), la UI se actualiza automáticamente.
-     */
     private fun observeUser(userId: Long) {
         observeUserJob?.cancel()
         observeUserJob = viewModelScope.launch {
@@ -115,6 +87,7 @@ class ProfileViewModel(
                         email = user.email,
                         birthDate = user.birthDate,
                         verified = user.email.contains("@"),
+                        photoUri = user.photoUri,
                         isLoading = false,
                         errorMessage = null
                     )
@@ -123,21 +96,12 @@ class ProfileViewModel(
         }
     }
 
-    // ---------------------------
-    // Eventos de UI (modo edición)
-    // ---------------------------
-
     fun onEditClick() {
         _uiState.update { it.copy(isEditing = true, errorMessage = null) }
     }
 
     fun onCancelEdit() {
         _uiState.update { it.copy(isEditing = false, errorMessage = null) }
-
-        /**
-         * Al cancelar, recargamos el usuario para descartar cambios introducidos en UI.
-         * (si el usuario editó name/email pero no guardó).
-         */
         currentUserId?.let { observeUser(it) }
     }
 
@@ -149,14 +113,6 @@ class ProfileViewModel(
         _uiState.update { it.copy(email = value, errorMessage = null) }
     }
 
-    /**
-     * Guarda cambios del perfil (displayName/email) en Room.
-     *
-     * Validaciones:
-     * - El nombre no puede estar vacío.
-     * - El email debe tener formato válido.
-     * - Si el email ya existe (UNIQUE), se captura excepción.
-     */
     fun onSaveChanges() {
         val userId = currentUserId ?: return
         val state = _uiState.value
@@ -188,7 +144,6 @@ class ProfileViewModel(
                         verified = state.email.contains("@")
                     )
                 }
-
             } catch (_: SQLiteConstraintException) {
                 _uiState.update {
                     it.copy(
@@ -207,15 +162,20 @@ class ProfileViewModel(
         }
     }
 
-    /**
-     * Logout:
-     * - Limpia DataStore (sesión).
-     * - ProfileRoute/NavHost reaccionan al guard (hasActiveSession = false)
-     *   y vuelven a Login.
-     */
-    fun onLogoutClick() {
+    // ✅ Se llama desde CameraScreen al capturar
+    fun onPhotoCaptured(uriString: String) {
+        val userId = currentUserId ?: return
+
         viewModelScope.launch {
-            sessionRepository.clearSession()
+            runCatching {
+                userRepository.updatePhoto(userId = userId, photoUri = uriString)
+            }.onFailure {
+                _uiState.update { it.copy(errorMessage = "No se pudo guardar la foto") }
+            }
         }
+    }
+
+    fun onLogoutClick() {
+        viewModelScope.launch { sessionRepository.clearSession() }
     }
 }
