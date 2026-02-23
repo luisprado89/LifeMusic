@@ -699,3 +699,23 @@ El proyecto, respecto a la primera entrega, evolucionó de una base centrada en 
 - **Retrofit**: Alto.
 - **Cámara**: Alto.
 - **DataStore/BBDD**: Alto.
+
+---
+
+## 📦 APK – Versión entregable
+
+Se ha generado una versión firmada de la aplicación correspondiente al estado final del proyecto.
+
+🔗 Página de la release:
+https://github.com/luisprado89/LifeMusic/releases/tag/v1.0
+
+⬇️ Descarga directa de la APK:
+https://github.com/luisprado89/LifeMusic/releases/download/v1.0/app-release.apk
+
+### Instalación
+
+1. Descargar el archivo `app-release.apk`.
+2. Activar la opción "Instalar aplicaciones de origen desconocido" en el dispositivo.
+3. Instalar en un dispositivo Android 8.0 o superior.
+
+La APK corresponde exactamente al estado final del repositorio en la rama `main` para la entrega académica.
