@@ -795,7 +795,7 @@ GET /v1/search?q=music&type=track&market=ES&limit=10&offset=0
 ```
 
 📸 Evidencia de respuesta JSON real:
-
+![API search response](docs/api_search_response.png)
 ```markdown
 ![API search response](docs/api_search_response.png)
 ```
@@ -825,7 +825,7 @@ La respuesta incluye:
 - Popularity (limitada bajo Client Credentials)
 
 📸 Evidencia de respuesta real desde la app:
-
+![API track detail response](docs/api_track_response_real.png)
 ```markdown
 ![API track detail response](docs/api_track_response_real.png)
 ```
@@ -851,7 +851,7 @@ Authorization: Bearer BQD8EW7LqVaxJsX5QK...
 En Logcat se puede observar claramente el envío del header en cada request.
 
 📸 Evidencia:
-
+![API request with Bearer token](docs/api_bearer_logcat.png)
 ```markdown
 ![API request with Bearer token](docs/api_bearer_logcat.png)
 ```
