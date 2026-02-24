@@ -824,10 +824,16 @@ La respuesta incluye:
 - Imágenes del álbum
 - Popularity (limitada bajo Client Credentials)
 
-📸 Evidencia de respuesta real desde la app:
+📸 Evidencia de respuesta real desde la Web API:
 ![API track detail response](docs/api_track_response_real.png)
 ```markdown
 ![API track detail response](docs/api_track_response_real.png)
+```
+
+📸 Evidencia de respuesta real desde la app:
+![API track detail response](docs/api_track_response_real_LogCat.png)
+```markdown
+![API track detail response](docs/api_track_response_real_LogCat.png)
 ```
 
 ---
