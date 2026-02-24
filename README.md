@@ -507,7 +507,7 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Login - segunda entrega](docs/pendiente_login_segunda_entrega.png)
+![Login - segunda entrega](docs/LoginPage.png)
 
 ---
 
@@ -522,7 +522,7 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Register - segunda entrega](docs/pendiente_register_segunda_entrega.png)
+![Register - segunda entrega](docs/RegisterPage.png)
 
 ---
 
@@ -539,9 +539,39 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Recover - segunda entrega](docs/pendiente_recover_segunda_entrega.png)
+## 📌 Recuperación de contraseña – Validación y seguridad
+
+La pantalla de recuperación implementa validación de datos y control de estado mediante ViewModel + UIState, garantizando seguridad y feedback adecuado al usuario.
 
 ---
+
+### 🔹 RecoverPasswordPage1 – Validación de correo inexistente
+
+En este estado el usuario introduce un correo que no existe en la base de datos (Room).
+
+El sistema:
+- Verifica la existencia del usuario.
+- Muestra un mensaje de error controlado.
+- Evita continuar el flujo de recuperación.
+
+Este comportamiento demuestra validación de datos y manejo de errores desde la capa de ViewModel.
+
+![RecoverPasswordPage1 – Correo no encontrado](docs/RecoverPasswordPage1.png)
+
+---
+
+### 🔹 RecoverPasswordPage2 – Recuperación mediante pregunta de seguridad
+
+Cuando el correo existe:
+
+- Se carga dinámicamente la pregunta de seguridad asociada al usuario.
+- Se solicita la respuesta correspondiente.
+- Se habilita el campo para establecer una nueva contraseña.
+- El botón de confirmación se activa solo cuando los datos son válidos.
+
+La lógica está gestionada desde el ViewModel, asegurando separación entre UI y lógica de negocio.
+
+![RecoverPasswordPage2 – Flujo válido de recuperación](docs/RecoverPasswordPage2.png)--
 
 ### 4.4 HomePage (`route = "home"`)
 
@@ -557,7 +587,41 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Home - segunda entrega](docs/pendiente_home_segunda_entrega.png)
+## 📌 Pantalla Home – Estados dinámicos según datos y conectividad
+
+La pantalla principal implementa lógica reactiva basada en ViewModel + StateFlow, adaptando el contenido según conexión y datos del usuario.
+
+---
+
+### 🔹 HomePage1 – Home con datos online y offline (modo híbrido)
+
+En este estado la aplicación muestra contenido combinado:
+
+- Canciones obtenidas desde la API de Spotify (cuando hay conexión).
+- Canciones del catálogo local como fallback.
+- Secciones estructuradas en:
+  - Recomendadas
+  - Nuevos Lanzamientos
+  - Populares
+
+La pantalla mantiene funcionamiento incluso sin conexión gracias a la estrategia offline-first implementada en el repositorio.
+
+![HomePage1 – Contenido híbrido online/offline](docs/HomePage.png)
+
+---
+
+### 🔹 HomePage2 – Estado sin recomendaciones (sin favoritos del usuario)
+
+Cuando el usuario aún no tiene canciones marcadas como favoritas, el sistema no puede generar recomendaciones personalizadas.
+
+En este caso:
+- Se muestra un mensaje informativo claro.
+- Se mantiene el resto de secciones disponibles.
+- El estado está controlado desde el UIState del ViewModel.
+
+Este comportamiento demuestra manejo correcto de estados vacíos y lógica condicional basada en datos del usuario.
+
+![HomePage2 – Sin recomendaciones por falta de favoritos](docs/HomePage2.png)
 
 ---
 
@@ -574,10 +638,40 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![List - segunda entrega](docs/pendiente_list_segunda_entrega.png)
+## 📌 Pantalla de Favoritos – Comparativa Online / Offline
+
+### 🔹 ListPage1 – Favoritos en modo online (API + persistencia local)
+
+En este estado la aplicación cuenta con conexión a internet.  
+Se muestran canciones obtenidas desde la API de Spotify junto con aquellas almacenadas localmente.  
+La información se sincroniza correctamente y se visualizan todos los favoritos del usuario.
+
+![ListPage1 – Favoritos en modo online](docs/ListPage.png)
 
 ---
 
+### 🔹 ListPage2 – Favoritos en modo offline con mensaje informativo
+
+En este estado la aplicación detecta ausencia de conexión.  
+Se activa el fallback offline mostrando únicamente los favoritos almacenados localmente (Room).
+
+Las canciones añadidas desde internet permanecen guardadas por ID en la base de datos, pero no se muestran hasta recuperar conectividad.  
+Se incluye un mensaje informativo para mejorar la experiencia de usuario.
+
+![ListPage2 – Favoritos en modo offline](docs/ListPage2.png)
+
+---
+
+
+### 🔹 ListPage3 – Estado vacío (sin favoritos)
+
+Cuando el usuario no tiene canciones marcadas como favoritas, se muestra un estado vacío controlado desde el UIState del ViewModel.
+
+Este estado mejora la experiencia de usuario al comunicar claramente que aún no existen datos asociados.
+
+![ListPage3 – Estado vacío de favoritos](docs/ListPage3.png)
+
+---
 ### 4.6 DetailPage (`route = "detail/{spotifyId}"`)
 
 **Qué hace**:
@@ -591,7 +685,7 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Detail - segunda entrega](docs/pendiente_detail_segunda_entrega.png)
+![Detail - segunda entrega](docs/DetailPage.png)
 
 ---
 
@@ -610,7 +704,9 @@ Requisitos específicos:
 
 **Espacio para imagen**:
 
-![Profile - segunda entrega](docs/pendiente_profile_segunda_entrega.png)
+![Profile - segunda entrega](docs/ProfilePage1.png)
+
+![Profile - segunda entrega](docs/ProfilePage2.png)
 
 ---
 
@@ -650,30 +746,132 @@ Reglas de sesión:
 
 ---
 
-## 6) API usada en la segunda entrega
+# 6) API usada en la segunda entrega
 
-### API externa
+## 6.1 API externa utilizada
 
-- **Spotify Web API**
-- Autenticación: Client Credentials
-- Endpoints usados:
-    - `GET /search` (búsqueda de tracks)
-    - `GET /tracks/{id}` (detalle de track)
+En esta segunda entrega se ha integrado una API externa real para la obtención de datos musicales.
 
-### Evidencias que conviene incluir en la memoria
+### 🎵 Spotify Web API
 
-1. Captura de respuesta JSON de `/search`.
-2. Captura de respuesta JSON de `/tracks/{id}`.
-3. Captura en Logcat/inspector mostrando request con Bearer token.
-4. Captura de pantalla de Home mostrando datos cargados desde API.
+- Tipo de autenticación: **Client Credentials Flow**
+- Protocolo: HTTPS
+- Librerías utilizadas: **Retrofit + OkHttp**
+- Interceptor personalizado para añadir automáticamente el header:
 
-### Espacios para imágenes de la API
+```http
+Authorization: Bearer {access_token}
+```
 
-![API search response](docs/pendiente_api_search_response.png)
+La API se utiliza para complementar el catálogo local (arquitectura offline-first), permitiendo:
 
-![API track detail response](docs/pendiente_api_track_response.png)
+- Búsqueda de canciones online
+- Obtención de detalles completos de un track
+- Carga dinámica de portadas reales desde Spotify
+- Combinación de resultados remotos con datos locales evitando duplicados por `spotifyId`
 
-![API request logcat/interceptor](docs/pendiente_api_logcat.png)
+---
+
+## 6.2 Endpoints utilizados
+
+### 🔎 1️⃣ Búsqueda de canciones
+
+```http
+GET https://api.spotify.com/v1/search
+```
+
+Parámetros utilizados:
+
+- `q` → texto de búsqueda
+- `type=track`
+- `market=ES`
+- `limit=10`
+- `offset=0`
+
+Ejemplo real ejecutado desde la aplicación:
+
+```http
+GET /v1/search?q=music&type=track&market=ES&limit=10&offset=0
+```
+
+📸 Evidencia de respuesta JSON real:
+
+```markdown
+![API search response](docs/api_search_response.png)
+```
+
+---
+
+### 🎼 2️⃣ Detalle de canción por ID
+
+```http
+GET https://api.spotify.com/v1/tracks/{id}
+```
+
+Ejemplo real capturado en Logcat:
+
+```http
+GET https://api.spotify.com/v1/tracks/3JnIt5bAQ3RTST2pL6USeu?market=ES
+```
+
+La respuesta incluye:
+
+- Nombre del track
+- Artistas
+- Información del álbum
+- Fecha de lanzamiento
+- Duración en milisegundos
+- Imágenes del álbum
+- Popularity (limitada bajo Client Credentials)
+
+📸 Evidencia de respuesta real desde la app:
+
+```markdown
+![API track detail response](docs/api_track_response_real.png)
+```
+
+---
+
+## 6.3 Evidencia de autenticación (Bearer Token)
+
+La autenticación se realiza mediante el flujo **Client Credentials** de Spotify.
+
+El token se obtiene desde:
+
+```http
+POST https://accounts.spotify.com/api/token
+```
+
+Y se adjunta automáticamente a cada petición mediante un interceptor de OkHttp:
+
+```http
+Authorization: Bearer BQD8EW7LqVaxJsX5QK...
+```
+
+En Logcat se puede observar claramente el envío del header en cada request.
+
+📸 Evidencia:
+
+```markdown
+![API request with Bearer token](docs/api_bearer_logcat.png)
+```
+
+> ⚠ Por seguridad, el token ha sido recortado en la captura.
+
+---
+
+## 6.4 Conclusión técnica
+
+La aplicación:
+
+- Consume una API real en producción.
+- Implementa autenticación OAuth2 mediante Client Credentials.
+- Gestiona correctamente el envío del Bearer token.
+- Maneja respuestas HTTP y errores.
+- Integra datos online con un sistema offline-first.
+- Evita duplicados usando `spotifyId` como identificador único.
+
+La integración cumple los requisitos técnicos de consumo de API externa exigidos en la segunda entrega.
 
 ---
 
